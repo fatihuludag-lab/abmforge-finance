@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Quality / Python 3.13
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install package and development tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Ruff format
+        run: python -m ruff format --check src tests
+      - name: Ruff lint
+        run: python -m ruff check src tests
+      - name: Mypy
+        run: python -m mypy src tests
+      - name: Tests with coverage
+        run: |
+          python -m pytest \
+            --cov=abmforge_finance \
+            --cov-report=term-missing \
+            --cov-report=xml
+
+  released-compatibility:
+    name: Released / ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: "3.10"
+          - os: ubuntu-latest
+            python: "3.11"
+          - os: ubuntu-latest
+            python: "3.12"
+          - os: ubuntu-latest
+            python: "3.13"
+          - os: windows-latest
+            python: "3.10"
+          - os: windows-latest
+            python: "3.13"
+          - os: macos-latest
+            python: "3.10"
+          - os: macos-latest
+            python: "3.13"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - name: Install released dependency line
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Run compatibility tests
+        run: python -m pytest
+
+  audited-main-compatibility:
+    name: Audited main / Python ${{ matrix.python }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.13"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - name: Install package and audited ABMForge main
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pip install --force-reinstall --no-deps -r constraints/abmforge-main.txt
+      - name: Report dependency identity
+        run: |
+          python -c "from importlib.metadata import version; print('abmforge', version('abmforge'))"
+      - name: Run compatibility tests
+        run: python -m pytest
+
+  package:
+    name: Build and clean install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Build distributions
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build twine
+          python -m build
+          python -m twine check dist/*
+      - name: Install wheel in a clean environment
+        run: |
+          python -m venv .venv-smoke
+          .venv-smoke/bin/python -m pip install --upgrade pip
+          .venv-smoke/bin/python -m pip install dist/*.whl
+          .venv-smoke/bin/python -c "import abmforge; import abmforge_finance; print(abmforge_finance.__version__)"

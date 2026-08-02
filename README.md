@@ -13,10 +13,10 @@ ordinary Python modules.
 
 ## Project status
 
-The project is in its package-bootstrap phase. This branch establishes packaging,
-typing, tests, CI, citation metadata, and the compatibility contract. It deliberately
-does **not** yet implement orders, traders, an exchange, a limit order book, or RL
-environments.
+The package now includes its first immutable finance-domain primitives: instruments,
+orders, trades, order sides, order types, time-in-force values, and a typed validation
+exception hierarchy. The exchange, order book, matching engine, clearing system,
+traders, and RL environments remain outside the current branch.
 
 ## Planned research scope
 
@@ -28,6 +28,37 @@ experiments, financial metrics, and bounded-memory research artifacts.
 A primary research question is how increasing the share of reinforcement-learning
 traders changes volatility, liquidity, price efficiency, tail risk, resilience,
 wealth distribution, and systemic fragility.
+
+## Domain example
+
+```python
+from decimal import Decimal
+
+from abmforge_finance import Instrument, Order, OrderType, Side, TimeInForce
+
+instrument = Instrument(
+    instrument_id="ACME",
+    tick_size=Decimal("0.01"),
+    lot_size=Decimal("1"),
+)
+
+order = Order(
+    order_id="order-1",
+    agent_id="agent-1",
+    instrument_id=instrument.instrument_id,
+    side=Side.BUY,
+    order_type=OrderType.LIMIT,
+    quantity=Decimal("10"),
+    remaining_quantity=Decimal("10"),
+    price=instrument.ticks_to_price(9950),
+    submitted_at=0,
+    sequence_number=1,
+    time_in_force=TimeInForce.GOOD_TIL_CANCELLED,
+)
+```
+
+Prices and quantities use `Decimal` at the public boundary. `Instrument` provides
+exact conversions to integer ticks and lots for the future order-book hot path.
 
 ## Installation
 
@@ -71,6 +102,8 @@ complete reproducibility record.
 Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 
 - [ADR-001: Separate finance extension repository](docs/adr/ADR-001-separate-finance-extension-repository.md)
+- [ADR-002: Domain engine independent from ABMForge](docs/adr/ADR-002-domain-engine-independent-from-abmforge.md)
+- [ADR-003: Price and quantity representation](docs/adr/ADR-003-price-and-quantity-representation.md)
 
 ## Development workflow
 

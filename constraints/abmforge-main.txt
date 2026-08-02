@@ -1,0 +1,2 @@
+# Audited ABMForge main compatibility target (2026-08-02).
+abmforge @ git+https://github.com/fatihuludag-lab/abmforge.git@20c75fa7500ed511c138fab92b359f219aaa3841

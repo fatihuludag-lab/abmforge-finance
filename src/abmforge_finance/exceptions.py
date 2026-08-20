@@ -38,6 +38,14 @@ class MarketError(FinanceError):
     """Base class for market-engine operation failures."""
 
 
+class MatchingEngineError(MarketError):
+    """Base class for deterministic matching-engine failures."""
+
+
+class InvalidIncomingOrderError(MatchingEngineError):
+    """Raised when an incoming order cannot be accepted by the matching engine."""
+
+
 class OrderBookError(MarketError):
     """Base class for deterministic limit-order-book failures."""
 

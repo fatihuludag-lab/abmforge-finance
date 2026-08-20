@@ -7,8 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Strengthened the market import-boundary architecture test with AST inspection.
+- Broadened order-book property validation across both sides, terminal cleanup, and depth aggregation.
+- Refreshed the audited ABMForge `main` compatibility target to the 2026-08-20 audit baseline.
+- Aligned the README flagship research question with the Agentic Narrative Finance program.
+- Corrected the `LimitOrderBook` class example docstring.
+
 ### Added
 
+- Deterministic single-instrument `LimitOrderBook` resting-state component.
+- Explicit price-time priority independent of order submission call order.
+- Cancellation and partial/full fill state transitions.
+- Best bid/ask, spread, mid-price, aggregated depth, and depth imbalance queries.
+- Immutable `DepthLevel` and `OrderBookSnapshot` values.
+- Market-engine exception hierarchy and invariant diagnostics.
+- Property tests for insertion-order independence and non-negative remaining quantity.
+- ADR-004 documenting the price-time-priority implementation.
 - Immutable `Instrument`, `Order`, and `Trade` domain values.
 - `Side`, `OrderType`, and `TimeInForce` enumerations.
 - Exact Decimal-to-integer tick and lot conversion.

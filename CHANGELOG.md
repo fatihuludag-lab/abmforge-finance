@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Atomic single-instrument `Exchange` orchestration using staged copy-on-commit transactions.
+- Post-transaction resting buy/sell resource-commitment validation.
+- Ownership-aware exchange cancellation without exposing mutable book internals.
+- Exchange atomicity, conservation, overcommitment, and exact-replay tests.
+- ADR-007 documenting transaction staging and resource-commitment policy.
 - Immutable `Account` and deterministic sparse `Portfolio` domain values.
 - Atomic `ClearingEngine` for exact cash and inventory settlement.
 - Signed fee/rebate accounting with an explicit venue fee balance.

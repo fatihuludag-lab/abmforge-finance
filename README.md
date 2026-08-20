@@ -14,12 +14,13 @@ ordinary Python modules.
 ## Project status
 
 The package now includes immutable finance-domain primitives, a deterministic
-single-instrument resting limit order book, a synchronous matching engine, and an
-independent clearing/accounting layer. The market core provides price-time priority,
-cancellation, partial fills, maker-price execution, multi-level matching, deterministic
-trade sequencing, exact cash/inventory settlement, signed fee accounting, best quotes,
-depth, spread, midpoint, and imbalance. Exchange orchestration, traders, recording,
-and RL environments remain outside the current branch.
+single-instrument resting limit order book, synchronous matching, independent
+clearing/accounting, and an atomic exchange orchestrator. The market core provides
+price-time priority, cancellation, partial fills, maker-price execution, multi-level
+matching, deterministic trade sequencing, exact cash/inventory settlement, signed fee
+accounting, passive-order resource commitments, best quotes, depth, spread, midpoint,
+and imbalance. Fundamental-value dynamics, traders, recording, and RL environments
+remain outside the current branch.
 
 ## Planned research scope
 
@@ -139,9 +140,33 @@ assert clearing.portfolio("agent-1").quantity(instrument.instrument_id) == Decim
 
 Baseline clearing rejects negative participant cash and negative inventory. Short
 selling is opt-in. Trade IDs are settlement idempotency keys, and failed settlement
-does not mutate clearing state. Matching and clearing are still separate transactions;
-the future exchange layer will add pre-trade admissibility checks before end-to-end
-market experiments.
+does not mutate clearing state. Standalone matching and clearing remain useful for
+mechanism tests; integrated market workflows should use `Exchange`.
+
+## Exchange example
+
+```python
+from abmforge_finance import Exchange
+
+exchange = Exchange(instrument)
+exchange.register(Account("agent-1", Decimal("1000")), Portfolio("agent-1"))
+exchange.register(
+    Account("agent-2", Decimal("100")),
+    Portfolio("agent-2", ((instrument.instrument_id, Decimal("10")),)),
+)
+
+exchange.submit(order)  # funded passive bid rests
+committed = exchange.submit(market_sell)
+assert committed.trades[0].price == Decimal("99.50")
+assert exchange.account("agent-1").cash == Decimal("602.00")
+assert exchange.portfolio("agent-1").quantity(instrument.instrument_id) == Decimal("4")
+```
+
+`Exchange` stages matching and clearing on independent in-memory copies and commits
+only after all settlements and post-transaction passive-order obligations are funded.
+Resting buys conservatively commit cash at their limit prices; resting sells commit
+inventory when short selling is disabled. Expected rejected submissions leave visible
+book and ledger state unchanged.
 
 ## Installation
 
@@ -190,6 +215,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-004: Price-time priority implementation](docs/adr/ADR-004-price-time-priority-implementation.md)
 - [ADR-005: Deterministic matching responsibility](docs/adr/ADR-005-deterministic-matching-responsibility.md)
 - [ADR-006: Clearing and accounting responsibility](docs/adr/ADR-006-clearing-and-accounting-responsibility.md)
+- [ADR-007: Exchange transaction and resource commitments](docs/adr/ADR-007-exchange-transaction-and-resource-commitments.md)
 
 ## Development workflow
 
@@ -202,6 +228,7 @@ feat/domain-primitives
 feat/limit-order-book
 feat/matching-engine
 feat/clearing-portfolio
+feat/exchange
 feat/finance-recorder
 feat/abmforge-adapter
 ```

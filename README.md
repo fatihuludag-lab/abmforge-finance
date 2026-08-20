@@ -13,10 +13,11 @@ ordinary Python modules.
 
 ## Project status
 
-The package now includes its first immutable finance-domain primitives: instruments,
-orders, trades, order sides, order types, time-in-force values, and a typed validation
-exception hierarchy. The exchange, order book, matching engine, clearing system,
-traders, and RL environments remain outside the current branch.
+The package now includes immutable finance-domain primitives and a deterministic
+single-instrument resting limit order book. The book provides price-time priority,
+cancellation, partial-fill state updates, best quotes, aggregated depth, spread,
+mid-price, and depth imbalance. Matching, clearing, traders, recording, and RL
+environments remain outside the current branch.
 
 ## Planned research scope
 
@@ -25,9 +26,11 @@ price-time-priority limit order book, deterministic discrete-time execution,
 baseline behavioral trading policies, fixed pretrained RL policies, multi-seed
 experiments, financial metrics, and bounded-memory research artifacts.
 
-A primary research question is how increasing the share of reinforcement-learning
-traders changes volatility, liquidity, price efficiency, tail risk, resilience,
-wealth distribution, and systemic fragility.
+The flagship research program asks whether high AI-agent penetration combined with
+shared or highly similar narrative-interpretation architectures creates correlated
+order flow that amplifies liquidity depletion, volatility, price dislocation, and
+tail risk under specific market regimes. Reinforcement-learning traders remain a
+planned extension after the market mechanism and baseline-agent layers are validated.
 
 ## Domain example
 
@@ -58,7 +61,31 @@ order = Order(
 ```
 
 Prices and quantities use `Decimal` at the public boundary. `Instrument` provides
-exact conversions to integer ticks and lots for the future order-book hot path.
+exact conversions to integer ticks and lots for the order-book hot path.
+
+## Limit-order-book example
+
+```python
+from decimal import Decimal
+
+from abmforge_finance import LimitOrderBook, Side
+
+book = LimitOrderBook(instrument)
+book.add(order)
+
+assert book.best_bid == Decimal("99.50")
+assert book.best_ask is None
+assert book.orders_by_priority(Side.BUY) == (order,)
+
+partially_filled = book.apply_fill("order-1", Decimal("4"))
+assert partially_filled.remaining_quantity == Decimal("6")
+
+snapshot = book.snapshot(levels=5)
+```
+
+`LimitOrderBook` stores only non-marketable GTC limit orders. Market orders,
+crossing limit orders, execution prices, and trade creation belong to the separate
+matching-engine layer.
 
 ## Installation
 
@@ -104,6 +131,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-001: Separate finance extension repository](docs/adr/ADR-001-separate-finance-extension-repository.md)
 - [ADR-002: Domain engine independent from ABMForge](docs/adr/ADR-002-domain-engine-independent-from-abmforge.md)
 - [ADR-003: Price and quantity representation](docs/adr/ADR-003-price-and-quantity-representation.md)
+- [ADR-004: Price-time priority implementation](docs/adr/ADR-004-price-time-priority-implementation.md)
 
 ## Development workflow
 

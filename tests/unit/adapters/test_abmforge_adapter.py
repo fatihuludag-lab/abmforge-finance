@@ -147,7 +147,7 @@ def test_expected_policy_rejection_consumes_adapter_identity_without_market_muta
     model.bundle = bundle
     model.setup()
 
-    model._run_for(1, finalize=False)
+    model.run_for(1)
     result = model.last_finance_step
     assert result is not None
     assert result.rejection_count == 1
@@ -196,7 +196,7 @@ def test_all_policies_observe_common_pre_action_market_snapshot() -> None:
     model.bundle = bundle
     model.setup()
 
-    model._run_for(1, finalize=False)
+    model.run_for(1)
 
     assert observer_policy.best_bids == [None]
     assert bundle.exchange.snapshot().best_bid == Decimal("99")
@@ -210,7 +210,7 @@ def test_execution_order_and_order_identity_follow_sorted_agent_id() -> None:
     model.bundle = bundle
     model.setup()
 
-    model._run_for(1, finalize=False)
+    model.run_for(1)
     result = model.last_finance_step
     assert result is not None
     assert tuple(outcome.agent_id for outcome in result.outcomes) == ("a-agent", "z-agent")

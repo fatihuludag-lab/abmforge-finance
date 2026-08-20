@@ -66,8 +66,8 @@ def test_order_identity_replays_across_equal_models() -> None:
     second.policy = LimitPolicy()
     first.setup()
     second.setup()
-    first._run_for(1, finalize=False)
-    second._run_for(1, finalize=False)
+    first.run_for(1)
+    second.run_for(1)
     first_result = first.last_finance_step
     second_result = second.last_finance_step
     assert first_result is not None and second_result is not None

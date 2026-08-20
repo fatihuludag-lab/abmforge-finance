@@ -15,12 +15,14 @@ ordinary Python modules.
 
 The package now includes immutable finance-domain primitives, a deterministic
 single-instrument resting limit order book, synchronous matching, independent
-clearing/accounting, and an atomic exchange orchestrator. The market core provides
+clearing/accounting, an atomic exchange orchestrator, deterministic market time, and
+fundamental-value processes. The market core provides
 price-time priority, cancellation, partial fills, maker-price execution, multi-level
 matching, deterministic trade sequencing, exact cash/inventory settlement, signed fee
 accounting, passive-order resource commitments, best quotes, depth, spread, midpoint,
-and imbalance. Fundamental-value dynamics, traders, recording, and RL environments
-remain outside the current branch.
+and imbalance. Constant, frozen-path, and explicitly seeded synthetic fundamental
+dynamics are available; traders, recording, and RL environments remain outside the
+current branch.
 
 ## Planned research scope
 
@@ -168,6 +170,34 @@ Resting buys conservatively commit cash at their limit prices; resting sells com
 inventory when short selling is disabled. Expected rejected submissions leave visible
 book and ledger state unchanged.
 
+## Market clock and fundamental value example
+
+```python
+from abmforge_finance import (
+    MarketClock,
+    SeededFundamentalRandomWalk,
+)
+
+clock = MarketClock()
+fundamental = SeededFundamentalRandomWalk(
+    Decimal("100"),
+    seed=20260821,
+    step_size=Decimal("0.01"),
+    max_abs_shock_units=5,
+)
+
+reference_value = fundamental.value_at(clock.current_step)
+clock.advance()
+next_reference_value = fundamental.value_at(clock.current_step)
+```
+
+`MarketClock` is integer-valued simulation time, not wall-clock time. Fundamental values
+are positive exact `Decimal` references and are not required to lie on the executable
+instrument tick grid. The seeded baseline owns a fixed SplitMix64 stream and does not use
+Python or NumPy global RNG state. It is intended for controlled synthetic experiments;
+more substantive stochastic or calibrated processes can implement the same
+`FundamentalValueProcess` protocol later.
+
 ## Installation
 
 The current package is intended for development use.
@@ -216,6 +246,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-005: Deterministic matching responsibility](docs/adr/ADR-005-deterministic-matching-responsibility.md)
 - [ADR-006: Clearing and accounting responsibility](docs/adr/ADR-006-clearing-and-accounting-responsibility.md)
 - [ADR-007: Exchange transaction and resource commitments](docs/adr/ADR-007-exchange-transaction-and-resource-commitments.md)
+- [ADR-008: Market time and fundamental value](docs/adr/ADR-008-market-time-and-fundamental-value.md)
 
 ## Development workflow
 
@@ -229,6 +260,7 @@ feat/limit-order-book
 feat/matching-engine
 feat/clearing-portfolio
 feat/exchange
+feat/fundamental-clock
 feat/finance-recorder
 feat/abmforge-adapter
 ```

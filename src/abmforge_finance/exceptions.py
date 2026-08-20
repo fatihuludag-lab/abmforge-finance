@@ -144,3 +144,23 @@ class OrderOwnershipError(ExchangeError):
 
 class ExchangeInvariantError(ExchangeError):
     """Raised when staged matching and settlement results are internally inconsistent."""
+
+
+class MarketClockError(MarketError):
+    """Base class for deterministic market-clock failures."""
+
+
+class InvalidMarketTimeError(MarketClockError):
+    """Raised when a discrete market period is invalid."""
+
+
+class FundamentalValueError(MarketError):
+    """Base class for fundamental-value process failures."""
+
+
+class InvalidFundamentalValueError(FundamentalValueError):
+    """Raised when a fundamental process configuration or value is invalid."""
+
+
+class FundamentalPathExhaustedError(FundamentalValueError):
+    """Raised when a frozen fundamental path is queried outside its defined horizon."""

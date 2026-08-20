@@ -121,6 +121,16 @@ class MatchingEngine:
         """Return the deterministic sequence number assigned to the next trade."""
         return self._next_trade_sequence
 
+    @property
+    def next_submission_sequence(self) -> int:
+        """Return the minimum valid sequence for the next accepted submission."""
+        return 0 if self._last_sequence_number is None else self._last_sequence_number + 1
+
+    @property
+    def last_submitted_at(self) -> int | float | None:
+        """Return the timestamp of the last accepted submission, if any."""
+        return self._last_submitted_at
+
     def submit(self, order: Order) -> MatchResult:
         """Process one fresh incoming order synchronously.
 

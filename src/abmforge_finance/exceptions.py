@@ -124,3 +124,23 @@ class InsufficientInventoryError(ClearingError):
 
 class SettlementInvariantError(ClearingError):
     """Raised when internal settlement conservation identities are violated."""
+
+
+class ExchangeError(MarketError):
+    """Base class for deterministic exchange-orchestration failures."""
+
+
+class InsufficientBuyingPowerError(ExchangeError):
+    """Raised when cash cannot support all post-transaction resting buy commitments."""
+
+
+class InsufficientAvailableInventoryError(ExchangeError):
+    """Raised when inventory cannot support all resting sell commitments."""
+
+
+class OrderOwnershipError(ExchangeError):
+    """Raised when a participant attempts to cancel another participant's order."""
+
+
+class ExchangeInvariantError(ExchangeError):
+    """Raised when staged matching and settlement results are internally inconsistent."""

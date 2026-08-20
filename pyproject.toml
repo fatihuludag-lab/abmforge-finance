@@ -96,3 +96,12 @@ warn_unreachable = true
 show_error_codes = true
 pretty = true
 files = ["src", "tests"]
+
+# NumPy 2.5+ stubs use Python 3.12 PEP 695 type statements.
+# ABMForge-Finance intentionally keeps mypy's target at Python 3.10,
+# so NumPy internals are excluded from traversal while our own code
+# remains checked in strict mode.
+[[tool.mypy.overrides]]
+module = ["numpy", "numpy.*"]
+follow_imports = "skip"
+follow_imports_for_stubs = true

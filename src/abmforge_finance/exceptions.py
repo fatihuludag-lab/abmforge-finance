@@ -164,3 +164,23 @@ class InvalidFundamentalValueError(FundamentalValueError):
 
 class FundamentalPathExhaustedError(FundamentalValueError):
     """Raised when a frozen fundamental path is queried outside its defined horizon."""
+
+
+class InvalidObservationError(DomainValidationError):
+    """Raised when a policy-facing market observation violates its value contract."""
+
+
+class InvalidDecisionError(DomainValidationError):
+    """Raised when a policy decision violates the decision contract."""
+
+
+class PolicyError(FinanceError):
+    """Base class for framework-independent trading-policy failures."""
+
+
+class InvalidPolicyError(PolicyError):
+    """Raised when policy configuration, input, or output is invalid."""
+
+
+class InvalidTraderError(FinanceError):
+    """Raised when trader identity or policy composition is invalid."""

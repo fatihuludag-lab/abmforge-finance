@@ -21,8 +21,9 @@ price-time priority, cancellation, partial fills, maker-price execution, multi-l
 matching, deterministic trade sequencing, exact cash/inventory settlement, signed fee
 accounting, passive-order resource commitments, best quotes, depth, spread, midpoint,
 and imbalance. Constant, frozen-path, and explicitly seeded synthetic fundamental
-dynamics are available; traders, recording, and RL environments remain outside the
-current branch.
+dynamics are available. A framework-independent trader/policy layer provides
+fundamental, trend-following, and explicitly seeded noise baselines; recording and RL
+environments remain outside the current branch.
 
 ## Planned research scope
 
@@ -197,6 +198,37 @@ instrument tick grid. The seeded baseline owns a fixed SplitMix64 stream and doe
 Python or NumPy global RNG state. It is intended for controlled synthetic experiments;
 more substantive stochastic or calibrated processes can implement the same
 `FundamentalValueProcess` protocol later.
+
+## Baseline trader-policy example
+
+```python
+from decimal import Decimal
+
+from abmforge_finance import (
+    FundamentalPolicy,
+    MarketObservation,
+    Trader,
+)
+
+trader = Trader(
+    agent_id="agent-1",
+    policy=FundamentalPolicy(Decimal("1"), minimum_gap=Decimal("0.50")),
+)
+observation = MarketObservation(
+    step=clock.current_step,
+    instrument_id=instrument.instrument_id,
+    fundamental_value=Decimal("101"),
+    mid_price=Decimal("100"),
+    cash=exchange.account("agent-1").cash,
+    inventory=exchange.portfolio("agent-1").quantity(instrument.instrument_id),
+)
+decision = trader.decide(observation)
+```
+
+`Trader` stores identity and policy only; authoritative cash, inventory, orders, and
+settlement state remain in `Exchange`. Policies receive immutable observations and emit
+immutable economic decisions. Order IDs, timestamps, sequence numbers, and conversion to
+domain `Order` values are intentionally deferred to the orchestration layer.
 
 ## Installation
 

@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Narrow `abmforge_finance.adapters` boundary with `FinanceABMModel` orchestration.
+- Immutable `FinanceComponents`, `FinanceOrderOutcome`, and `FinanceStepResult` audit values.
+- Deterministic decision-to-order identity, finance clock synchronization, and expected-rejection capture.
+- Call-order-independent named finance component seeds derived from the ABMForge scenario seed.
+- ABMForge Recorder model metrics plus real `Scenario` integration tests.
+- Public exchange submission-sequence/time introspection for generic orchestration.
+- ADR-010 documenting the ABMForge integration and finance orchestration boundary.
 - Immutable `MarketObservation` and `TradingDecision` policy-boundary values.
 - Framework-independent `Trader` identity composed with swappable `TradingPolicy` logic.
 - Directional `FundamentalPolicy` and `TrendFollowingPolicy` baselines.

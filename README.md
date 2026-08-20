@@ -12,19 +12,19 @@ clearing, accounting, policy, recording, and validation components to be tested 
 ordinary Python modules.
 
 ## Project status
-
 The package now includes immutable finance-domain primitives, a deterministic
 single-instrument resting limit order book, synchronous matching, independent
-clearing/accounting, an atomic exchange orchestrator, deterministic market time, and
-fundamental-value processes. The market core provides
-price-time priority, cancellation, partial fills, maker-price execution, multi-level
-matching, deterministic trade sequencing, exact cash/inventory settlement, signed fee
-accounting, passive-order resource commitments, best quotes, depth, spread, midpoint,
-and imbalance. Constant, frozen-path, and explicitly seeded synthetic fundamental
-dynamics are available. A framework-independent trader/policy layer provides
-fundamental, trend-following, and explicitly seeded noise baselines; recording and RL
-environments remain outside the current branch.
-
+clearing/accounting, an atomic exchange orchestrator, deterministic market time,
+fundamental-value processes, baseline trader policies, and an ABMForge lifecycle
+adapter. The market core provides price-time priority, cancellation, partial fills,
+maker-price execution, multi-level matching, deterministic trade sequencing, exact
+cash/inventory settlement, signed fee accounting, passive-order resource commitments,
+best quotes, depth, spread, midpoint, and imbalance. Constant, frozen-path, and
+explicitly seeded synthetic fundamental dynamics are available. The adapter coordinates
+common pre-action observations, deterministic decision-to-order conversion, named
+finance component seeds, Exchange submission, and model-level ABMForge Recorder
+metrics. Dedicated finance artifact recording, market metrics, validation suites, and
+RL environments remain planned.
 ## Planned research scope
 
 The first research core will support a single risky asset, a central exchange, a
@@ -230,6 +230,72 @@ settlement state remain in `Exchange`. Policies receive immutable observations a
 immutable economic decisions. Order IDs, timestamps, sequence numbers, and conversion to
 domain `Order` values are intentionally deferred to the orchestration layer.
 
+## ABMForge adapter example
+
+```python
+from decimal import Decimal
+
+from abmforge.experiment.scenario import Scenario
+
+from abmforge_finance import (
+    Account,
+    ConstantFundamentalValue,
+    Exchange,
+    Instrument,
+    MarketClock,
+    NoisePolicy,
+    Portfolio,
+    Trader,
+)
+from abmforge_finance.adapters import FinanceABMModel, FinanceComponents
+
+
+class BaselineMarket(FinanceABMModel):
+    def build_finance_components(self) -> FinanceComponents:
+        instrument = Instrument(
+            instrument_id="ACME",
+            tick_size=Decimal("0.01"),
+            lot_size=Decimal("1"),
+        )
+        exchange = Exchange(instrument)
+        exchange.register(
+            Account("noise-1", Decimal("1000")),
+            Portfolio("noise-1", ((instrument.instrument_id, Decimal("10")),)),
+        )
+        trader = Trader(
+            agent_id="noise-1",
+            policy=NoisePolicy(
+                quantity=Decimal("1"),
+                seed=self.finance_seed("noise-1"),
+            ),
+        )
+        return FinanceComponents(
+            exchange=exchange,
+            clock=MarketClock(),
+            fundamental=ConstantFundamentalValue(Decimal("100")),
+            traders=(trader,),
+        )
+
+
+result = Scenario(
+    model=BaselineMarket,
+    seed=42,
+    steps=10,
+    name="baseline-market",
+).run()
+
+assert result.model.finance.clock.current_step == 10
+result.dataset.validate()
+```
+
+`FinanceABMModel` leaves ABMForge responsible for scenario construction, model
+`steps/time`, and recorder collection. Finance traders observe one common pre-action
+market snapshot per period; decisions are collected before deterministic execution.
+The adapter owns order IDs, timestamps, and submission sequence numbers so policies
+remain independent of market orchestration. Named `finance_seed(...)` streams are
+derived deterministically from the explicit ABMForge model seed. Expected economic
+order rejections are recorded as outcomes rather than treated as model crashes.
+
 ## Installation
 
 The current package is intended for development use.
@@ -279,6 +345,8 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-006: Clearing and accounting responsibility](docs/adr/ADR-006-clearing-and-accounting-responsibility.md)
 - [ADR-007: Exchange transaction and resource commitments](docs/adr/ADR-007-exchange-transaction-and-resource-commitments.md)
 - [ADR-008: Market time and fundamental value](docs/adr/ADR-008-market-time-and-fundamental-value.md)
+- [ADR-009: Trader-policy separation and decision boundary](docs/adr/ADR-009-trader-policy-separation-and-decision-boundary.md)
+- [ADR-010: ABMForge integration and finance orchestration boundary](docs/adr/ADR-010-abmforge-integration-and-finance-orchestration-boundary.md)
 
 ## Development workflow
 
@@ -293,8 +361,9 @@ feat/matching-engine
 feat/clearing-portfolio
 feat/exchange
 feat/fundamental-clock
-feat/finance-recorder
+feat/baseline-policies
 feat/abmforge-adapter
+feat/finance-recorder
 ```
 
 ## License

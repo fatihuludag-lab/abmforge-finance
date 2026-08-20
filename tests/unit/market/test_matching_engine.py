@@ -477,3 +477,22 @@ def test_trade_sequence_continues_across_multiple_takers() -> None:
     assert second.trades[0].sequence_number == 1
     assert second.trades[0].trade_id == "trade-000000000001"
     assert engine.next_trade_sequence == 2
+
+
+def test_submission_introspection_tracks_last_accepted_order() -> None:
+    instrument = make_instrument()
+    engine = MatchingEngine(instrument)
+    assert engine.next_submission_sequence == 0
+    assert engine.last_submitted_at is None
+
+    order = make_order(
+        "introspection",
+        side=Side.BUY,
+        price="99.00",
+        quantity="1",
+        submitted_at=3,
+        sequence_number=7,
+    )
+    engine.submit(order)
+    assert engine.next_submission_sequence == 8
+    assert engine.last_submitted_at == 3

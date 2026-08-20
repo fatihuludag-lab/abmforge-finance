@@ -531,3 +531,23 @@ def test_exchange_result_convenience_properties_match_matching_result() -> None:
     assert result.rested == result.match_result.rested
     assert result.executed_quantity == result.match_result.executed_quantity
     assert result.cancelled_quantity == result.match_result.cancelled_quantity
+
+
+def test_exchange_exposes_submission_introspection() -> None:
+    exchange = Exchange(instrument())
+    exchange.register(Account("buyer", Decimal("1000")), Portfolio("buyer"))
+    assert exchange.next_submission_sequence == 0
+    assert exchange.last_submitted_at is None
+
+    incoming = order(
+        "exchange-introspection",
+        "buyer",
+        side=Side.BUY,
+        price="99.00",
+        quantity="1",
+        submitted_at=4,
+        sequence_number=12,
+    )
+    exchange.submit(incoming)
+    assert exchange.next_submission_sequence == 13
+    assert exchange.last_submitted_at == 4

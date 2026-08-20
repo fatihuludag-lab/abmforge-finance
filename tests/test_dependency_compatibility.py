@@ -10,6 +10,8 @@ from abmforge.experiment.experiment import Experiment
 from abmforge.experiment.parameter_grid import ParameterGrid
 from abmforge.experiment.scenario import Scenario
 
+from abmforge_finance.adapters import FinanceABMModel
+
 _REQUIRED_PUBLIC_SYMBOLS = {
     "Agent": Agent,
     "Model": Model,
@@ -28,3 +30,8 @@ def test_required_symbols_are_available_from_top_level_api() -> None:
     """Top-level ABMForge exports resolve to their canonical implementations."""
     for name, canonical_symbol in _REQUIRED_PUBLIC_SYMBOLS.items():
         assert getattr(abmforge, name) is canonical_symbol
+
+
+def test_finance_adapter_subclasses_stable_abmforge_model() -> None:
+    """The finance adapter binds only to the stable-alpha ABMForge Model contract."""
+    assert issubclass(FinanceABMModel, Model)

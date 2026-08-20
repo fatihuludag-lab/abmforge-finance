@@ -184,3 +184,23 @@ class InvalidPolicyError(PolicyError):
 
 class InvalidTraderError(FinanceError):
     """Raised when trader identity or policy composition is invalid."""
+
+
+class FinanceAdapterError(FinanceError):
+    """Base class for ABMForge finance-adapter failures."""
+
+
+class FinanceAdapterNotInitializedError(FinanceAdapterError):
+    """Raised when adapter state is accessed before finance setup completes."""
+
+
+class InvalidFinanceComponentsError(FinanceAdapterError):
+    """Raised when a finance model returns an invalid component bundle."""
+
+
+class FinanceClockDriftError(FinanceAdapterError):
+    """Raised when ABMForge model steps and finance market time diverge."""
+
+
+class FinanceSeedUnavailableError(FinanceAdapterError):
+    """Raised when deterministic component-seed derivation lacks a model seed."""

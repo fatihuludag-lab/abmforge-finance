@@ -108,6 +108,16 @@ class Exchange:
         return self._matching.next_trade_sequence
 
     @property
+    def next_submission_sequence(self) -> int:
+        """Return the minimum valid sequence for the next accepted order submission."""
+        return self._matching.next_submission_sequence
+
+    @property
+    def last_submitted_at(self) -> int | float | None:
+        """Return the timestamp of the last accepted order submission, if any."""
+        return self._matching.last_submitted_at
+
+    @property
     def settled_trade_ids(self) -> tuple[str, ...]:
         """Return successfully settled trade identifiers in settlement order."""
         return self._clearing.settled_trade_ids

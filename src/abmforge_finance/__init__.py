@@ -2,18 +2,35 @@
 
 from importlib.metadata import PackageNotFoundError, version
 
-from abmforge_finance.domain import Instrument, Order, OrderType, Side, TimeInForce, Trade
+from abmforge_finance.domain import (
+    Account,
+    Instrument,
+    Order,
+    OrderType,
+    Portfolio,
+    Side,
+    TimeInForce,
+    Trade,
+)
 from abmforge_finance.exceptions import (
+    ClearingError,
     CrossingOrderError,
     DomainValidationError,
     DuplicateOrderError,
+    DuplicateParticipantError,
     DuplicateSequenceNumberError,
+    DuplicateSettlementError,
     FinanceError,
+    InsufficientCashError,
+    InsufficientInventoryError,
+    InvalidAccountError,
     InvalidBookOrderError,
+    InvalidClearingRegistrationError,
     InvalidDepthError,
     InvalidIncomingOrderError,
     InvalidInstrumentError,
     InvalidOrderError,
+    InvalidPortfolioError,
     InvalidPriceError,
     InvalidQuantityError,
     InvalidTradeError,
@@ -22,14 +39,19 @@ from abmforge_finance.exceptions import (
     OrderBookError,
     OrderBookInvariantError,
     OrderNotFoundError,
+    OutOfOrderSettlementError,
     OverfillError,
+    SettlementInvariantError,
+    UnknownParticipantError,
 )
 from abmforge_finance.market import (
+    ClearingEngine,
     DepthLevel,
     LimitOrderBook,
     MatchingEngine,
     MatchResult,
     OrderBookSnapshot,
+    SettlementResult,
 )
 
 try:
@@ -38,18 +60,28 @@ except PackageNotFoundError:  # pragma: no cover - only for an unpackaged source
     __version__ = "0.1.0a0"
 
 __all__ = [
+    "Account",
+    "ClearingEngine",
+    "ClearingError",
     "CrossingOrderError",
     "DepthLevel",
     "DomainValidationError",
     "DuplicateOrderError",
+    "DuplicateParticipantError",
     "DuplicateSequenceNumberError",
+    "DuplicateSettlementError",
     "FinanceError",
     "Instrument",
+    "InsufficientCashError",
+    "InsufficientInventoryError",
+    "InvalidAccountError",
     "InvalidBookOrderError",
+    "InvalidClearingRegistrationError",
     "InvalidDepthError",
     "InvalidIncomingOrderError",
     "InvalidInstrumentError",
     "InvalidOrderError",
+    "InvalidPortfolioError",
     "InvalidPriceError",
     "InvalidQuantityError",
     "InvalidTradeError",
@@ -64,9 +96,14 @@ __all__ = [
     "OrderBookSnapshot",
     "OrderNotFoundError",
     "OrderType",
+    "OutOfOrderSettlementError",
     "OverfillError",
+    "Portfolio",
+    "SettlementInvariantError",
+    "SettlementResult",
     "Side",
     "TimeInForce",
     "Trade",
+    "UnknownParticipantError",
     "__version__",
 ]

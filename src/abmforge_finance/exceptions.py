@@ -80,3 +80,47 @@ class InvalidDepthError(OrderBookError):
 
 class OrderBookInvariantError(OrderBookError):
     """Raised when internal order-book indexes are inconsistent."""
+
+
+class InvalidAccountError(DomainValidationError):
+    """Raised when an account value violates the domain contract."""
+
+
+class InvalidPortfolioError(DomainValidationError):
+    """Raised when a portfolio value violates the domain contract."""
+
+
+class ClearingError(FinanceError):
+    """Base class for deterministic clearing and settlement failures."""
+
+
+class InvalidClearingRegistrationError(ClearingError):
+    """Raised when participant ledger registration is inconsistent."""
+
+
+class DuplicateParticipantError(ClearingError):
+    """Raised when a participant is registered more than once."""
+
+
+class UnknownParticipantError(ClearingError):
+    """Raised when settlement references an unregistered participant."""
+
+
+class DuplicateSettlementError(ClearingError):
+    """Raised when the same trade identifier is submitted for settlement twice."""
+
+
+class OutOfOrderSettlementError(ClearingError):
+    """Raised when trade event order moves backwards or repeats a sequence."""
+
+
+class InsufficientCashError(ClearingError):
+    """Raised when settlement would violate the non-negative cash policy."""
+
+
+class InsufficientInventoryError(ClearingError):
+    """Raised when settlement would create a disallowed short position."""
+
+
+class SettlementInvariantError(ClearingError):
+    """Raised when internal settlement conservation identities are violated."""

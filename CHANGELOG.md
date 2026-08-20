@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Immutable `Account` and deterministic sparse `Portfolio` domain values.
+- Atomic `ClearingEngine` for exact cash and inventory settlement.
+- Signed fee/rebate accounting with an explicit venue fee balance.
+- Duplicate-settlement, insufficient-cash, insufficient-inventory, and registration guards.
+- Clearing conservation and deterministic-replay property tests.
+- ADR-006 documenting clearing, short-selling, fee, idempotency, and integration boundaries.
 - Deterministic single-instrument `MatchingEngine` with maker-price execution.
 - Multi-level market and crossing-limit execution with explicit maker/taker attribution.
 - Immutable `MatchResult` values exposing executed, unfilled, cancelled, and resting quantities.

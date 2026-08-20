@@ -14,11 +14,12 @@ ordinary Python modules.
 ## Project status
 
 The package now includes immutable finance-domain primitives, a deterministic
-single-instrument resting limit order book, and a synchronous matching engine. The
-market core provides price-time priority, cancellation, partial fills, maker-price
-execution, multi-level matching, deterministic trade sequencing, best quotes, depth,
-spread, midpoint, and imbalance. Clearing, portfolios, traders, recording, and RL
-environments remain outside the current branch.
+single-instrument resting limit order book, a synchronous matching engine, and an
+independent clearing/accounting layer. The market core provides price-time priority,
+cancellation, partial fills, maker-price execution, multi-level matching, deterministic
+trade sequencing, exact cash/inventory settlement, signed fee accounting, best quotes,
+depth, spread, midpoint, and imbalance. Exchange orchestration, traders, recording,
+and RL environments remain outside the current branch.
 
 ## Planned research scope
 
@@ -115,8 +116,32 @@ assert result.trades[0].price == Decimal("99.50")  # resting maker price
 
 The first matching core supports GTC and IOC only. Market orders are IOC, IOC
 residuals are cancelled, and a positive GTC limit residual rests after compatible
-liquidity is exhausted. FOK, fees, clearing, and portfolio mutation are intentionally
-deferred.
+liquidity is exhausted. FOK and fee generation remain intentionally deferred; signed
+fees already present on a `Trade` are handled by the clearing layer.
+
+## Clearing and accounting example
+
+```python
+from abmforge_finance import Account, ClearingEngine, Portfolio
+
+clearing = ClearingEngine()
+clearing.register(Account("agent-1", Decimal("1000")), Portfolio("agent-1"))
+clearing.register(
+    Account("agent-2", Decimal("100")),
+    Portfolio("agent-2", ((instrument.instrument_id, Decimal("10")),)),
+)
+
+settlement = clearing.settle(result.trades[0])
+assert settlement.inventory_delta == Decimal("0")
+assert clearing.account("agent-1").cash == Decimal("602.00")
+assert clearing.portfolio("agent-1").quantity(instrument.instrument_id) == Decimal("4")
+```
+
+Baseline clearing rejects negative participant cash and negative inventory. Short
+selling is opt-in. Trade IDs are settlement idempotency keys, and failed settlement
+does not mutate clearing state. Matching and clearing are still separate transactions;
+the future exchange layer will add pre-trade admissibility checks before end-to-end
+market experiments.
 
 ## Installation
 
@@ -164,6 +189,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-003: Price and quantity representation](docs/adr/ADR-003-price-and-quantity-representation.md)
 - [ADR-004: Price-time priority implementation](docs/adr/ADR-004-price-time-priority-implementation.md)
 - [ADR-005: Deterministic matching responsibility](docs/adr/ADR-005-deterministic-matching-responsibility.md)
+- [ADR-006: Clearing and accounting responsibility](docs/adr/ADR-006-clearing-and-accounting-responsibility.md)
 
 ## Development workflow
 

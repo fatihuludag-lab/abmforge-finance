@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Deterministic single-instrument `MatchingEngine` with maker-price execution.
+- Multi-level market and crossing-limit execution with explicit maker/taker attribution.
+- Immutable `MatchResult` values exposing executed, unfilled, cancelled, and resting quantities.
+- Engine-level submission-history and monotone event-order validation.
+- Matching conservation and exact-replay property tests.
+- ADR-005 documenting matching responsibility, execution price, IOC/GTC residuals, and trade sequencing.
 - Deterministic single-instrument `LimitOrderBook` resting-state component.
 - Explicit price-time priority independent of order submission call order.
 - Cancellation and partial/full fill state transitions.

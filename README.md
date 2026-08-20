@@ -13,10 +13,11 @@ ordinary Python modules.
 
 ## Project status
 
-The package now includes immutable finance-domain primitives and a deterministic
-single-instrument resting limit order book. The book provides price-time priority,
-cancellation, partial-fill state updates, best quotes, aggregated depth, spread,
-mid-price, and depth imbalance. Matching, clearing, traders, recording, and RL
+The package now includes immutable finance-domain primitives, a deterministic
+single-instrument resting limit order book, and a synchronous matching engine. The
+market core provides price-time priority, cancellation, partial fills, maker-price
+execution, multi-level matching, deterministic trade sequencing, best quotes, depth,
+spread, midpoint, and imbalance. Clearing, portfolios, traders, recording, and RL
 environments remain outside the current branch.
 
 ## Planned research scope
@@ -87,6 +88,36 @@ snapshot = book.snapshot(levels=5)
 crossing limit orders, execution prices, and trade creation belong to the separate
 matching-engine layer.
 
+## Matching-engine example
+
+```python
+from abmforge_finance import MatchingEngine, OrderType, Side, TimeInForce
+
+engine = MatchingEngine(instrument)
+engine.submit(order)  # passive bid rests
+
+market_sell = Order(
+    order_id="order-2",
+    agent_id="agent-2",
+    instrument_id=instrument.instrument_id,
+    side=Side.SELL,
+    order_type=OrderType.MARKET,
+    quantity=Decimal("4"),
+    remaining_quantity=Decimal("4"),
+    price=None,
+    submitted_at=1,
+    sequence_number=2,
+    time_in_force=TimeInForce.IMMEDIATE_OR_CANCEL,
+)
+result = engine.submit(market_sell)
+assert result.trades[0].price == Decimal("99.50")  # resting maker price
+```
+
+The first matching core supports GTC and IOC only. Market orders are IOC, IOC
+residuals are cancelled, and a positive GTC limit residual rests after compatible
+liquidity is exhausted. FOK, fees, clearing, and portfolio mutation are intentionally
+deferred.
+
 ## Installation
 
 The current package is intended for development use.
@@ -132,6 +163,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-002: Domain engine independent from ABMForge](docs/adr/ADR-002-domain-engine-independent-from-abmforge.md)
 - [ADR-003: Price and quantity representation](docs/adr/ADR-003-price-and-quantity-representation.md)
 - [ADR-004: Price-time priority implementation](docs/adr/ADR-004-price-time-priority-implementation.md)
+- [ADR-005: Deterministic matching responsibility](docs/adr/ADR-005-deterministic-matching-responsibility.md)
 
 ## Development workflow
 

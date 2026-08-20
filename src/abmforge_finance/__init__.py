@@ -11,18 +11,26 @@ from abmforge_finance.exceptions import (
     FinanceError,
     InvalidBookOrderError,
     InvalidDepthError,
+    InvalidIncomingOrderError,
     InvalidInstrumentError,
     InvalidOrderError,
     InvalidPriceError,
     InvalidQuantityError,
     InvalidTradeError,
     MarketError,
+    MatchingEngineError,
     OrderBookError,
     OrderBookInvariantError,
     OrderNotFoundError,
     OverfillError,
 )
-from abmforge_finance.market import DepthLevel, LimitOrderBook, OrderBookSnapshot
+from abmforge_finance.market import (
+    DepthLevel,
+    LimitOrderBook,
+    MatchingEngine,
+    MatchResult,
+    OrderBookSnapshot,
+)
 
 try:
     __version__ = version("abmforge-finance")
@@ -39,6 +47,7 @@ __all__ = [
     "Instrument",
     "InvalidBookOrderError",
     "InvalidDepthError",
+    "InvalidIncomingOrderError",
     "InvalidInstrumentError",
     "InvalidOrderError",
     "InvalidPriceError",
@@ -46,6 +55,9 @@ __all__ = [
     "InvalidTradeError",
     "LimitOrderBook",
     "MarketError",
+    "MatchResult",
+    "MatchingEngine",
+    "MatchingEngineError",
     "Order",
     "OrderBookError",
     "OrderBookInvariantError",

@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Framework-independent `MarketClock` with explicit monotone integer periods.
+- `FundamentalValueProcess` protocol with constant, frozen-path, and explicitly seeded synthetic implementations.
+- Package-owned SplitMix64 seeded fundamental random walk with exact Decimal shock arithmetic.
+- Market-time and fundamental replay/property tests plus a frozen known-seed path.
+- ADR-008 documenting simulation-time, frozen-input, RNG, and interpretation boundaries.
 - Atomic single-instrument `Exchange` orchestration using staged copy-on-commit transactions.
 - Post-transaction resting buy/sell resource-commitment validation.
 - Ownership-aware exchange cancellation without exposing mutable book internals.

@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Immutable `MarketObservation` and `TradingDecision` policy-boundary values.
+- Framework-independent `Trader` identity composed with swappable `TradingPolicy` logic.
+- Directional `FundamentalPolicy` and `TrendFollowingPolicy` baselines.
+- Stateless explicitly seeded `NoisePolicy` with keyed SHA-256 replay semantics.
+- Policy/trader architecture tests and deterministic decision property tests.
+- ADR-009 documenting trader-policy separation and the decision/orchestration boundary.
 - Framework-independent `MarketClock` with explicit monotone integer periods.
 - `FundamentalValueProcess` protocol with constant, frozen-path, and explicitly seeded synthetic implementations.
 - Package-owned SplitMix64 seeded fundamental random walk with exact Decimal shock arithmetic.

@@ -38,6 +38,7 @@ from abmforge_finance.market import (
     MarketClock,
     OrderBookSnapshot,
 )
+from abmforge_finance.recording import FinanceResearchRecorder
 
 _ZERO = Decimal("0")
 _FINANCE_SEED_NAMESPACE = b"abmforge-finance.component-seed.v1"
@@ -51,6 +52,7 @@ class FinanceComponents:
     clock: MarketClock
     fundamental: FundamentalValueProcess
     traders: tuple[Trader, ...]
+    research_recorder: FinanceResearchRecorder | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -219,9 +221,12 @@ class FinanceABMModel(Model, ABC):
             clock=components.clock,
             fundamental=components.fundamental,
             traders=sorted_traders,
+            research_recorder=components.research_recorder,
         )
         self._finance_traders = sorted_traders
         self._next_order_sequence = components.exchange.next_submission_sequence
+        if components.research_recorder is not None:
+            components.research_recorder.start(components.exchange, sorted_traders)
         self._register_finance_metrics()
 
     def step(self) -> None:
@@ -309,6 +314,7 @@ class FinanceABMModel(Model, ABC):
             price_change=self._last_price_change,
             fee_balance=components.exchange.fee_balance,
         )
+        self._record_research_step(self._last_step_result)
         components.clock.advance()
 
     def _validate_components(self, components: object) -> None:
@@ -328,6 +334,12 @@ class FinanceABMModel(Model, ABC):
             isinstance(trader, Trader) for trader in components.traders
         ):
             raise InvalidFinanceComponentsError("traders must be a tuple of Trader values")
+        if components.research_recorder is not None and not isinstance(
+            components.research_recorder, FinanceResearchRecorder
+        ):
+            raise InvalidFinanceComponentsError(
+                "research_recorder must be a FinanceResearchRecorder or None"
+            )
         trader_ids = tuple(trader.agent_id for trader in components.traders)
         if len(set(trader_ids)) != len(trader_ids):
             raise InvalidFinanceComponentsError("trader agent_id values must be unique")
@@ -409,6 +421,40 @@ class FinanceABMModel(Model, ABC):
             submitted_at=period,
             sequence_number=sequence,
             time_in_force=cast(TimeInForce, decision.time_in_force),
+        )
+
+    def _record_research_step(self, result: FinanceStepResult) -> None:
+        recorder = self.finance.research_recorder
+        if recorder is None:
+            return
+        for outcome in result.outcomes:
+            recorder.record_decision(
+                period=result.period,
+                agent_id=outcome.agent_id,
+                decision=outcome.decision,
+            )
+            if outcome.order is not None:
+                recorder.record_order(
+                    period=result.period,
+                    order=outcome.order,
+                    exchange_result=outcome.exchange_result,
+                    rejection_type=outcome.rejection_type,
+                    rejection_message=outcome.rejection_message,
+                )
+            for trade in outcome.trades:
+                recorder.record_trade(period=result.period, trade=trade)
+        recorder.record_market_state(
+            period=result.period,
+            fundamental_value=result.fundamental_value,
+            snapshot=result.post_snapshot,
+            last_trade_price=result.last_trade_price,
+            price_change=result.price_change,
+            fee_balance=result.fee_balance,
+        )
+        recorder.record_balances(
+            period=result.period,
+            phase="post",
+            exchange=self.finance.exchange,
         )
 
     def _register_finance_metrics(self) -> None:

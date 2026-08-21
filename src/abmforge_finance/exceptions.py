@@ -216,3 +216,19 @@ class RecordingStateError(RecordingError):
 
 class InvalidFinanceDatasetError(RecordingError):
     """Raised when a finance research dataset violates schema-v1 invariants."""
+
+
+class FinanceArtifactError(RecordingError):
+    """Base class for deterministic finance research-artifact failures."""
+
+
+class InvalidFinanceArtifactError(FinanceArtifactError):
+    """Raised when artifact configuration or serialization input is invalid."""
+
+
+class FinanceArtifactExistsError(FinanceArtifactError):
+    """Raised when no-overwrite artifact creation targets an existing path."""
+
+
+class FinanceArtifactVerificationError(FinanceArtifactError):
+    """Raised when a persisted finance artifact bundle fails verification."""

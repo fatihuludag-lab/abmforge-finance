@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the `LimitOrderBook` class example docstring.
 
 ### Added
+- Finance research schema v1 with participant, decision, order, trade, market-state, account, and position tables.
+- Framework-independent `FinanceResearchRecorder` preserving exact `Decimal` economic values.
+- Optional ABMForge adapter hook for deterministic per-period finance research capture.
+- ADR-011 documenting the finance recording and dataset boundary.
 
 - Narrow `abmforge_finance.adapters` boundary with `FinanceABMModel` orchestration.
 - Immutable `FinanceComponents`, `FinanceOrderOutcome`, and `FinanceStepResult` audit values.

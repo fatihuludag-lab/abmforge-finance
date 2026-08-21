@@ -204,3 +204,15 @@ class FinanceClockDriftError(FinanceAdapterError):
 
 class FinanceSeedUnavailableError(FinanceAdapterError):
     """Raised when deterministic component-seed derivation lacks a model seed."""
+
+
+class RecordingError(FinanceError):
+    """Base class for finance research-recording failures."""
+
+
+class RecordingStateError(RecordingError):
+    """Raised when recorder lifecycle or event metadata is inconsistent."""
+
+
+class InvalidFinanceDatasetError(RecordingError):
+    """Raised when a finance research dataset violates schema-v1 invariants."""

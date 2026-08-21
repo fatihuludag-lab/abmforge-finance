@@ -15,16 +15,19 @@ ordinary Python modules.
 The package now includes immutable finance-domain primitives, a deterministic
 single-instrument resting limit order book, synchronous matching, independent
 clearing/accounting, an atomic exchange orchestrator, deterministic market time,
-fundamental-value processes, baseline trader policies, and an ABMForge lifecycle
-adapter. The market core provides price-time priority, cancellation, partial fills,
-maker-price execution, multi-level matching, deterministic trade sequencing, exact
-cash/inventory settlement, signed fee accounting, passive-order resource commitments,
-best quotes, depth, spread, midpoint, and imbalance. Constant, frozen-path, and
-explicitly seeded synthetic fundamental dynamics are available. The adapter coordinates
-common pre-action observations, deterministic decision-to-order conversion, named
-finance component seeds, Exchange submission, and model-level ABMForge Recorder
-metrics. Dedicated finance artifact recording, market metrics, validation suites, and
-RL environments remain planned.
+fundamental-value processes, baseline trader policies, an ABMForge lifecycle adapter,
+finance-specific research recording, and canonical research artifacts. The market core
+provides price-time priority, cancellation, partial fills, maker-price execution,
+multi-level matching, deterministic trade sequencing, exact cash/inventory settlement,
+signed fee accounting, passive-order resource commitments, best quotes, depth, spread,
+midpoint, and imbalance. Constant, frozen-path, and explicitly seeded synthetic
+fundamental dynamics are available. The adapter coordinates common pre-action
+observations, deterministic decision-to-order conversion, named finance component
+seeds, Exchange submission, and model-level ABMForge Recorder metrics. Finance research
+datasets preserve exact `Decimal` values for participants, decisions, orders, trades,
+market states, accounts, and positions, and can be written as canonical JSONL/CSV
+bundles with explicit provenance and SHA-256 integrity metadata. Market metrics,
+validation suites, calibrated market ecology, and RL environments remain planned.
 ## Planned research scope
 
 The first research core will support a single risky asset, a central exchange, a
@@ -296,6 +299,71 @@ remain independent of market orchestration. Named `finance_seed(...)` streams ar
 derived deterministically from the explicit ABMForge model seed. Expected economic
 order rejections are recorded as outcomes rather than treated as model crashes.
 
+
+## Finance research recording and artifacts
+
+`FinanceResearchRecorder` captures finance-specific research tables without importing
+ABMForge. Attach it through `FinanceComponents` when a scenario should retain
+participant metadata, every policy decision including `HOLD`, accepted or rejected
+orders, committed trades, post-action market states, and exact cash/inventory history.
+
+```python
+from pathlib import Path
+
+from abmforge_finance.recording import (
+    FinanceResearchRecorder,
+    verify_finance_artifacts,
+    write_finance_artifacts,
+)
+
+class RecordedMarket(FinanceABMModel):
+    def build_finance_components(self) -> FinanceComponents:
+        recorder = FinanceResearchRecorder()
+        # Build the same instrument, exchange, clock, fundamental process, and
+        # trader tuple used by the market model.
+        return FinanceComponents(
+            exchange=exchange,
+            clock=clock,
+            fundamental=fundamental,
+            traders=traders,
+            research_recorder=recorder,
+        )
+
+result = Scenario(
+    model=RecordedMarket,
+    seed=42,
+    steps=100,
+    name="recorded-market",
+).run()
+
+recorder = result.model.finance.research_recorder
+assert recorder is not None
+dataset = recorder.dataset
+dataset.validate()
+
+artifact_dir = write_finance_artifacts(
+    dataset,
+    Path("artifacts/run-42"),
+    provenance={
+        "model_seed": "42",
+        "scenario": "recorded-market",
+        "abmforge_finance_git_commit": "<git-sha>",
+        "abmforge_commit_or_version": "<abmforge-id>",
+    },
+)
+verify_finance_artifacts(artifact_dir)
+```
+
+The default artifact bundle contains `manifest.json` plus canonical JSONL and CSV
+representations of `participants`, `decisions`, `orders`, `trades`, `market_states`,
+`accounts`, and `positions`. Serialization uses UTF-8 with LF line endings, fixed
+column order, deterministic row order, and exact string representations for `Decimal`
+values. The manifest stores explicit caller-supplied provenance, table row counts,
+column contracts, producer metadata, and SHA-256 digests for data files. Artifact
+creation is no-overwrite and commits a completed temporary directory atomically.
+SHA-256 verification provides integrity checking relative to the manifest; it is not
+presented as cryptographic authenticity.
+
 ## Installation
 
 The current package is intended for development use.
@@ -347,6 +415,8 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-008: Market time and fundamental value](docs/adr/ADR-008-market-time-and-fundamental-value.md)
 - [ADR-009: Trader-policy separation and decision boundary](docs/adr/ADR-009-trader-policy-separation-and-decision-boundary.md)
 - [ADR-010: ABMForge integration and finance orchestration boundary](docs/adr/ADR-010-abmforge-integration-and-finance-orchestration-boundary.md)
+- [ADR-011: Finance research recording and dataset boundary](docs/adr/ADR-011-finance-research-recording-and-dataset-boundary.md)
+- [ADR-012: Deterministic finance research artifacts and canonical serialization](docs/adr/ADR-012-deterministic-finance-research-artifacts-and-canonical-serialization.md)
 
 ## Development workflow
 
@@ -364,6 +434,7 @@ feat/fundamental-clock
 feat/baseline-policies
 feat/abmforge-adapter
 feat/finance-recorder
+feat/finance-artifacts
 ```
 
 ## License

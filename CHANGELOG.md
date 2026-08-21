@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the `LimitOrderBook` class example docstring.
 
 ### Added
+- Canonical finance research artifact schema v1 with deterministic JSONL and CSV tables.
+- Atomic no-overwrite artifact writing with explicit provenance and SHA-256 file digests.
+- Artifact verification for schema, membership, hashes, rows, columns, and canonical encoding.
+- ADR-012 documenting deterministic serialization and integrity boundaries.
 - Finance research schema v1 with participant, decision, order, trade, market-state, account, and position tables.
 - Framework-independent `FinanceResearchRecorder` preserving exact `Decimal` economic values.
 - Optional ABMForge adapter hook for deterministic per-period finance research capture.

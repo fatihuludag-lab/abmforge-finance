@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the `LimitOrderBook` class example docstring.
 
 ### Added
+- Primitive finance market metrics for returns, liquidity, price dislocation, directional flow, and trade activity.
+- Explicit midpoint/last-trade price-basis semantics with no silent fallback or forward filling.
+- Exact Decimal metric points where algebraic operations remain exact and float log-return points for statistical analysis.
+- ADR-013 documenting finance metric formulas and missing-data semantics.
 - Canonical finance research artifact schema v1 with deterministic JSONL and CSV tables.
 - Atomic no-overwrite artifact writing with explicit provenance and SHA-256 file digests.
 - Artifact verification for schema, membership, hashes, rows, columns, and canonical encoding.

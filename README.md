@@ -471,6 +471,53 @@ hard-code a universal definition of a crash. Recovery-time analysis is deferred 
 the stress-experiment layer because it requires an explicit shock window, baseline,
 and recovery criterion.
 
+
+## Static passive-liquidity baseline
+
+`PassiveLiquidityPolicy` provides a deterministic one-shot, one-sided GTC quote around
+the latent fundamental value. Two independently registered and independently funded
+traders can be paired to create a controlled two-sided static-liquidity baseline.
+
+```python
+from decimal import Decimal
+
+from abmforge_finance import PassiveLiquidityPolicy, Side, Trader
+
+bid_provider = Trader(
+    "lp-bid",
+    PassiveLiquidityPolicy(
+        side=Side.BUY,
+        quantity=Decimal("10"),
+        tick_size=instrument.tick_size,
+        offset_ticks=1,
+    ),
+)
+
+ask_provider = Trader(
+    "lp-ask",
+    PassiveLiquidityPolicy(
+        side=Side.SELL,
+        quantity=Decimal("10"),
+        tick_size=instrument.tick_size,
+        offset_ticks=1,
+    ),
+)
+```
+
+For a fundamental value of `100`, tick size `1`, and one-tick offset, the paired
+baseline quotes `99` bid and `101` ask with the configured quantity on each side.
+Non-grid fundamentals are rounded outward: BUY uses the floor-side grid and SELL uses
+the ceiling-side grid, keeping paired quotes non-crossing for the same configuration.
+
+The policy emits its quote only on `quote_step` and returns `HOLD` afterwards, so
+resting depth is not duplicated every period. Quotes follow the normal
+policy -> decision -> adapter -> Exchange -> research-recorder path.
+
+This is a controlled liquidity fixture, not a realistic single-dealer balance sheet.
+Dynamic quote replacement, ownership-aware cancellation orchestration, inventory skew,
+adaptive spreads, and multi-action policy output are deferred to the next
+market-ecology milestone.
+
 ## Installation
 
 The current package is intended for development use.
@@ -526,6 +573,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-012: Deterministic finance research artifacts and canonical serialization](docs/adr/ADR-012-deterministic-finance-research-artifacts-and-canonical-serialization.md)
 - [ADR-013: Finance market metrics and statistical semantics](docs/adr/ADR-013-finance-market-metrics-and-statistical-semantics.md)
 - [ADR-014: Stability, synchronization, and tail-event metric semantics](docs/adr/ADR-014-stability-synchronization-and-tail-event-metric-semantics.md)
+- [ADR-015: Static passive-liquidity baseline and deferred quote replacement](docs/adr/ADR-015-static-passive-liquidity-baseline-and-deferred-quote-replacement.md)
 
 ## Development workflow
 
@@ -546,6 +594,7 @@ feat/finance-recorder
 feat/finance-artifacts
 feat/market-metrics
 feat/stability-metrics
+feat/passive-liquidity
 ```
 
 ## License

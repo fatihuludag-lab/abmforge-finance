@@ -82,6 +82,7 @@ from abmforge_finance.market import (
 from abmforge_finance.policies import (
     FundamentalPolicy,
     NoisePolicy,
+    PassiveLiquidityPolicy,
     TradingPolicy,
     TrendFollowingPolicy,
 )
@@ -154,6 +155,7 @@ __all__ = [
     "OrderType",
     "OutOfOrderSettlementError",
     "OverfillError",
+    "PassiveLiquidityPolicy",
     "PolicyError",
     "Portfolio",
     "SeededFundamentalRandomWalk",

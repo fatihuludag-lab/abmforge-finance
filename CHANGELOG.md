@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the `LimitOrderBook` class example docstring.
 
 ### Added
+- Immutable `TradingPlan` and `CancelIntent` primitives preserving one decision per trader-period.
+- `TradingPlanPolicy` protocol and trader normalization for legacy and cancel/replace-aware policies.
+- Stateless `DynamicPassiveLiquidityPolicy` for fundamental-relative periodic requoting.
+- ADR-016 documenting cancel/replace planning semantics and deferred adapter/recording execution.
 - Deterministic one-shot `PassiveLiquidityPolicy` for controlled one-sided GTC liquidity.
 - Paired passive-liquidity baseline supporting reproducible two-sided static depth around the fundamental value.
 - ADR-015 documenting why dynamic cancel/replace and multi-action policy output are deferred to Phase 9B.

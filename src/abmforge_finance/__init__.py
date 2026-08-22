@@ -5,6 +5,7 @@ from importlib.metadata import PackageNotFoundError, version
 from abmforge_finance.agents import Trader
 from abmforge_finance.domain import (
     Account,
+    CancelIntent,
     DecisionKind,
     Instrument,
     MarketObservation,
@@ -15,6 +16,7 @@ from abmforge_finance.domain import (
     TimeInForce,
     Trade,
     TradingDecision,
+    TradingPlan,
 )
 from abmforge_finance.exceptions import (
     ClearingError,
@@ -50,6 +52,7 @@ from abmforge_finance.exceptions import (
     InvalidQuantityError,
     InvalidTradeError,
     InvalidTraderError,
+    InvalidTradingPlanError,
     MarketClockError,
     MarketError,
     MatchingEngineError,
@@ -80,9 +83,11 @@ from abmforge_finance.market import (
     SettlementResult,
 )
 from abmforge_finance.policies import (
+    DynamicPassiveLiquidityPolicy,
     FundamentalPolicy,
     NoisePolicy,
     PassiveLiquidityPolicy,
+    TradingPlanPolicy,
     TradingPolicy,
     TrendFollowingPolicy,
 )
@@ -94,6 +99,7 @@ except PackageNotFoundError:  # pragma: no cover - only for an unpackaged source
 
 __all__ = [
     "Account",
+    "CancelIntent",
     "ClearingEngine",
     "ClearingError",
     "ConstantFundamentalValue",
@@ -106,6 +112,7 @@ __all__ = [
     "DuplicateParticipantError",
     "DuplicateSequenceNumberError",
     "DuplicateSettlementError",
+    "DynamicPassiveLiquidityPolicy",
     "Exchange",
     "ExchangeError",
     "ExchangeInvariantError",
@@ -137,6 +144,7 @@ __all__ = [
     "InvalidQuantityError",
     "InvalidTradeError",
     "InvalidTraderError",
+    "InvalidTradingPlanError",
     "LimitOrderBook",
     "MarketClock",
     "MarketClockError",
@@ -166,6 +174,8 @@ __all__ = [
     "Trade",
     "Trader",
     "TradingDecision",
+    "TradingPlan",
+    "TradingPlanPolicy",
     "TradingPolicy",
     "TrendFollowingPolicy",
     "UnknownParticipantError",

@@ -174,6 +174,10 @@ class InvalidDecisionError(DomainValidationError):
     """Raised when a policy decision violates the decision contract."""
 
 
+class InvalidTradingPlanError(DomainValidationError):
+    """Raised when a cancel/replace trading plan violates its contract."""
+
+
 class PolicyError(FinanceError):
     """Base class for framework-independent trading-policy failures."""
 

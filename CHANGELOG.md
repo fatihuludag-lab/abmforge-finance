@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the `LimitOrderBook` class example docstring.
 
 ### Added
+- Unannualized full-sample and rolling realized volatility with explicit gap semantics.
+- Exact drawdown, maximum drawdown, depth depletion, spread amplification, and absolute dislocation metrics.
+- Unweighted decision and accepted-order sign concentration distinct from quantity-weighted flow imbalance.
+- Explicit-threshold extreme-return, downside-return, and drawdown breach indicators.
+- ADR-014 documenting stability, synchronization, baseline, and tail-event semantics.
 - Primitive finance market metrics for returns, liquidity, price dislocation, directional flow, and trade activity.
 - Explicit midpoint/last-trade price-basis semantics with no silent fallback or forward filling.
 - Exact Decimal metric points where algebraic operations remain exact and float log-return points for statistical analysis.

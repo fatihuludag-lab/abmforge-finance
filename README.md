@@ -564,6 +564,62 @@ The current plan contract permits zero or more cancellations plus exactly one tr
 decision. Arbitrary multi-submit batches, inventory-aware market making, adaptive
 spreads, latency, RL, and LLM-based liquidity provision remain later work.
 
+
+## Baseline market ecology and calibration
+
+The calibration layer provides a controlled synthetic market ecology for validating
+mechanisms before narrative or AI-agent treatments are introduced. It is deliberately
+separate from empirical parameter fitting.
+
+A scenario is defined independently of its replicate seed:
+
+```python
+from decimal import Decimal
+
+from abmforge_finance.calibration import (
+    ConstantFundamentalBenchmarkConfig,
+    run_constant_fundamental_benchmark,
+)
+
+config = ConstantFundamentalBenchmarkConfig(
+    periods=20,
+    fundamental_value=Decimal("100"),
+    passive_quantity=Decimal("10"),
+    quote_offset_ticks=1,
+    noise_trader_count=1,
+    noise_quantity=Decimal("1"),
+    noise_activity_bps=10_000,
+)
+
+experiment = run_constant_fundamental_benchmark(
+    config,
+    seeds=(101, 202, 303),
+)
+```
+
+Each replicate is identified by scenario, treatment, replicate index, and explicit
+seed. Scenario parameters are canonicalized and hashed with SHA-256, while the seed
+is excluded from the scenario fingerprint because it identifies a replicate rather
+than a treatment definition.
+
+The initial controlled ecology combines a constant latent fundamental, dynamic passive
+bid/ask providers, and explicitly seeded noise traders. Replicate-level outputs include
+order, cancellation, rejection and trade counts, exact trade volume, realized
+volatility, maximum drawdown, relative spread, displayed depth, relative fundamental
+dislocation, and decision-sign concentration.
+
+Treatment summaries report defined-replicate count, arithmetic mean, sample standard
+deviation, standard error, minimum, and maximum. These are descriptive replication
+summaries only; the calibration layer does not produce p-values, confidence intervals,
+multiple-testing corrections, or empirical-fit claims.
+
+Passive-depth sweeps reuse the same ordered seed tuple across treatments, supporting a
+common-random-number design when stochastic components and agent identities are held
+fixed. At this stage the hard assertion is mechanistic: greater configured passive
+quantity must generate greater displayed depth. Claims about volatility, tail risk, or
+other economic outcomes are evaluated later across replicated treatments rather than
+encoded as unit-test truths.
+
 ## Installation
 
 The current package is intended for development use.
@@ -621,6 +677,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-014: Stability, synchronization, and tail-event metric semantics](docs/adr/ADR-014-stability-synchronization-and-tail-event-metric-semantics.md)
 - [ADR-015: Static passive-liquidity baseline and deferred quote replacement](docs/adr/ADR-015-static-passive-liquidity-baseline-and-deferred-quote-replacement.md)
 - [ADR-016: Cancel/replace trading plans and dynamic passive liquidity](docs/adr/ADR-016-cancel-replace-trading-plans-and-dynamic-passive-liquidity.md)
+- [ADR-017: Baseline market ecology, replication, and calibration semantics](docs/adr/ADR-017-baseline-market-ecology-replication-and-calibration-semantics.md)
 
 ## Development workflow
 
@@ -643,6 +700,7 @@ feat/market-metrics
 feat/stability-metrics
 feat/passive-liquidity
 feat/dynamic-liquidity
+feat/baseline-market-ecology
 ```
 
 ## License

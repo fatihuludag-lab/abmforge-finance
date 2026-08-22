@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the `LimitOrderBook` class example docstring.
 
 ### Added
+- Seed-paired treatment-minus-control contrasts preserving common-random-number experiment structure.
+- Dependency-free two-sided Student-t confidence intervals for paired differences.
+- Descriptive contrast-region summaries for effect-direction robustness diagnostics.
+- ADR-019 documenting paired inference, missing-value, and multiplicity semantics.
 - Deterministic moving-fundamental tracking benchmark using existing midpoint dislocation as tracking error.
 - Common-seed quote-width, noise-activity, and noise-population calibration sweeps.
 - ADR-018 documenting benchmark-family and common-random-number semantics.

@@ -715,6 +715,63 @@ symmetric tick-aligned fixture may be asserted as software/mechanism properties.
 Claims about volatility, drawdown, tail risk, or liquidity resilience remain
 replicated experimental results rather than universal unit-test assertions.
 
+
+## Paired treatment contrasts and confidence intervals
+
+Common-random-number calibration treatments can be compared with explicit
+seed-paired inference. For treatment `T`, control `C`, and common seed `s`, the
+library defines:
+
+```text
+D_s = Y(T, s) - Y(C, s)
+```
+
+The sign convention is always **treatment minus control**.
+
+```python
+from abmforge_finance.calibration import paired_treatment_contrast
+
+contrast = paired_treatment_contrast(
+    control,
+    treatment,
+    metric_name="trade_count",
+    confidence_level=0.95,
+)
+```
+
+A valid paired contrast requires identical ordered seed tuples, at least two replicate
+pairs, the same scenario identifier and horizon, identical canonical parameter keys,
+distinct treatment identifiers, and at least one changed canonical parameter value.
+Requested metrics must be defined and finite for every pair; missing values are not
+silently dropped.
+
+The reported uncertainty uses the sample standard deviation of paired differences:
+
+```text
+SE = s_D / sqrt(n)
+```
+
+and a two-sided Student-t interval:
+
+```text
+mean(D) +/- t_(1-alpha/2, n-1) * SE
+```
+
+The Student-t critical value is computed without adding SciPy as a runtime dependency.
+ABMForge-Finance evaluates the Student-t CDF through the regularized incomplete-beta
+representation and deterministically inverts it by bisection. Reference critical-value
+tests cover small and moderate degrees of freedom.
+
+Related contrasts can also be summarized with `summarize_contrast_region()`, which
+reports positive, negative, zero, and mixed mean-effect directions and the number of
+individual confidence intervals excluding zero. This is a descriptive robustness
+diagnostic only: it is **not** a simultaneous confidence region and performs no
+multiple-testing correction.
+
+Formal multiplicity control, bootstrap intervals, regression/meta-models, empirical
+parameter fitting, and stylized-fact acceptance criteria remain separate later
+analysis steps.
+
 ## Installation
 
 The current package is intended for development use.
@@ -774,6 +831,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-016: Cancel/replace trading plans and dynamic passive liquidity](docs/adr/ADR-016-cancel-replace-trading-plans-and-dynamic-passive-liquidity.md)
 - [ADR-017: Baseline market ecology, replication, and calibration semantics](docs/adr/ADR-017-baseline-market-ecology-replication-and-calibration-semantics.md)
 - [ADR-018: Fundamental tracking and common-random-number benchmark sweeps](docs/adr/ADR-018-fundamental-tracking-and-common-random-number-benchmark-sweeps.md)
+- [ADR-019: Paired treatment contrasts and confidence intervals](docs/adr/ADR-019-paired-treatment-contrasts-and-confidence-intervals.md)
 
 ## Development workflow
 
@@ -798,6 +856,7 @@ feat/passive-liquidity
 feat/dynamic-liquidity
 feat/baseline-market-ecology
 feat/calibration-benchmarks
+feat/calibration-inference
 ```
 
 ## License

@@ -256,3 +256,7 @@ class InvalidCalibrationError(CalibrationError):
 
 class CalibrationExecutionError(CalibrationError):
     """Raised when a calibration replicate violates its execution contract."""
+
+
+class CalibrationInferenceError(CalibrationError):
+    """Raised when paired calibration inference violates its statistical contract."""

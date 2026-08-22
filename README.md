@@ -518,6 +518,52 @@ Dynamic quote replacement, ownership-aware cancellation orchestration, inventory
 adaptive spreads, and multi-action policy output are deferred to the next
 market-ecology milestone.
 
+
+## Dynamic passive liquidity and cancel/replace lifecycle
+
+`DynamicPassiveLiquidityPolicy` extends the static liquidity fixture with deterministic
+cancel-before-replace behavior while preserving the one-decision-per-trader-period
+research contract.
+
+```python
+from decimal import Decimal
+
+from abmforge_finance import DynamicPassiveLiquidityPolicy, Side, Trader
+
+bid_provider = Trader(
+    "lp-bid",
+    DynamicPassiveLiquidityPolicy(
+        side=Side.BUY,
+        quantity=Decimal("10"),
+        tick_size=instrument.tick_size,
+        offset_ticks=1,
+    ),
+)
+```
+
+Each period the policy receives only its own active order identifiers. It requests
+their cancellation and produces exactly one replacement GTC decision around the
+current fundamental reference. The orchestration layer validates every cancellation
+before changing exchange state, then executes **all cancellations before any new
+submission**.
+
+For a one-tick offset:
+
+```text
+fundamental 100 -> bid 99, ask 101
+fundamental 102 -> cancel stale quotes -> bid 101, ask 103
+fundamental 101 -> cancel stale quotes -> bid 100, ask 102
+```
+
+Finance research dataset schema `1.1` and artifact schema `1.1` add a separate
+`cancellations` table. Cancellation artifacts are included in canonical CSV/JSONL
+output, deterministic manifest membership, row counts, and SHA-256 integrity
+verification.
+
+The current plan contract permits zero or more cancellations plus exactly one trading
+decision. Arbitrary multi-submit batches, inventory-aware market making, adaptive
+spreads, latency, RL, and LLM-based liquidity provision remain later work.
+
 ## Installation
 
 The current package is intended for development use.
@@ -574,6 +620,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-013: Finance market metrics and statistical semantics](docs/adr/ADR-013-finance-market-metrics-and-statistical-semantics.md)
 - [ADR-014: Stability, synchronization, and tail-event metric semantics](docs/adr/ADR-014-stability-synchronization-and-tail-event-metric-semantics.md)
 - [ADR-015: Static passive-liquidity baseline and deferred quote replacement](docs/adr/ADR-015-static-passive-liquidity-baseline-and-deferred-quote-replacement.md)
+- [ADR-016: Cancel/replace trading plans and dynamic passive liquidity](docs/adr/ADR-016-cancel-replace-trading-plans-and-dynamic-passive-liquidity.md)
 
 ## Development workflow
 
@@ -595,6 +642,7 @@ feat/finance-artifacts
 feat/market-metrics
 feat/stability-metrics
 feat/passive-liquidity
+feat/dynamic-liquidity
 ```
 
 ## License

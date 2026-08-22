@@ -2,6 +2,7 @@
 
 from abmforge_finance.adapters.abmforge import (
     FinanceABMModel,
+    FinanceCancellationOutcome,
     FinanceComponents,
     FinanceOrderOutcome,
     FinanceStepResult,
@@ -18,6 +19,7 @@ __all__ = [
     "FinanceABMModel",
     "FinanceAdapterError",
     "FinanceAdapterNotInitializedError",
+    "FinanceCancellationOutcome",
     "FinanceClockDriftError",
     "FinanceComponents",
     "FinanceOrderOutcome",

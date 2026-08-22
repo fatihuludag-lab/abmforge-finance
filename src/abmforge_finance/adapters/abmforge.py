@@ -19,6 +19,7 @@ from abmforge_finance.domain import (
     TimeInForce,
     Trade,
     TradingDecision,
+    TradingPlan,
 )
 from abmforge_finance.exceptions import (
     FinanceAdapterNotInitializedError,
@@ -29,6 +30,7 @@ from abmforge_finance.exceptions import (
     InvalidFinanceComponentsError,
     InvalidPriceError,
     InvalidQuantityError,
+    InvalidTradingPlanError,
     UnknownParticipantError,
 )
 from abmforge_finance.market import (
@@ -53,6 +55,15 @@ class FinanceComponents:
     fundamental: FundamentalValueProcess
     traders: tuple[Trader, ...]
     research_recorder: FinanceResearchRecorder | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class FinanceCancellationOutcome:
+    """Audit record for one successfully executed cancellation."""
+
+    sequence_number: int
+    agent_id: str
+    order: Order
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,6 +104,7 @@ class FinanceStepResult:
     last_trade_price: Decimal | None
     price_change: Decimal | None
     fee_balance: Decimal
+    cancellations: tuple[FinanceCancellationOutcome, ...] = ()
 
     @property
     def trades(self) -> tuple[Trade, ...]:
@@ -105,6 +117,12 @@ class FinanceStepResult:
         """Return the number of committed trades in this period."""
 
         return len(self.trades)
+
+    @property
+    def cancellation_count(self) -> int:
+        """Return the number of successful resting-order cancellations."""
+
+        return len(self.cancellations)
 
     @property
     def rejection_count(self) -> int:
@@ -238,7 +256,7 @@ class FinanceABMModel(Model, ABC):
         fundamental_value = components.fundamental.value_at(period)
         pre_snapshot = components.exchange.snapshot()
 
-        planned: list[tuple[Trader, TradingDecision]] = []
+        planned: list[tuple[Trader, TradingPlan]] = []
         for trader in self._finance_traders:
             observation = self._build_observation(
                 trader=trader,
@@ -246,14 +264,46 @@ class FinanceABMModel(Model, ABC):
                 fundamental_value=fundamental_value,
                 snapshot=pre_snapshot,
             )
-            planned.append((trader, trader.decide(observation)))
+            planned.append(
+                (
+                    trader,
+                    trader.plan(
+                        observation,
+                        active_order_ids=components.exchange.active_order_ids(trader.agent_id),
+                    ),
+                )
+            )
+
+        self._validate_cancellation_plans(planned)
+
+        cancellations: list[FinanceCancellationOutcome] = []
+        cancellation_sequence = 0
+        for trader, plan in planned:
+            for intent in plan.cancellations:
+                cancelled_order = components.exchange.cancel(
+                    intent.order_id,
+                    participant_id=trader.agent_id,
+                )
+                cancellations.append(
+                    FinanceCancellationOutcome(
+                        sequence_number=cancellation_sequence,
+                        agent_id=trader.agent_id,
+                        order=cancelled_order,
+                    )
+                )
+                cancellation_sequence += 1
 
         outcomes: list[FinanceOrderOutcome] = []
-        for trader, decision in planned:
+        for trader, plan in planned:
+            decision = plan.decision
             if decision.is_hold:
-                outcomes.append(FinanceOrderOutcome(agent_id=trader.agent_id, decision=decision))
+                outcomes.append(
+                    FinanceOrderOutcome(
+                        agent_id=trader.agent_id,
+                        decision=decision,
+                    )
+                )
                 continue
-
             order = self._order_from_decision(
                 agent_id=trader.agent_id,
                 decision=decision,
@@ -285,7 +335,6 @@ class FinanceABMModel(Model, ABC):
                         exchange_result=exchange_result,
                     )
                 )
-
         trades = tuple(
             trade
             for outcome in outcomes
@@ -313,9 +362,36 @@ class FinanceABMModel(Model, ABC):
             last_trade_price=self._last_trade_price,
             price_change=self._last_price_change,
             fee_balance=components.exchange.fee_balance,
+            cancellations=tuple(cancellations),
         )
         self._record_research_step(self._last_step_result)
         components.clock.advance()
+
+    def _validate_cancellation_plans(
+        self,
+        planned: list[tuple[Trader, TradingPlan]],
+    ) -> None:
+        """Validate all cancellation intents before mutating the Exchange."""
+        seen: set[str] = set()
+        exchange = self.finance.exchange
+        for trader, plan in planned:
+            for intent in plan.cancellations:
+                if intent.order_id in seen:
+                    raise InvalidTradingPlanError(
+                        f"order_id {intent.order_id!r} is cancelled more than once "
+                        "in the same finance period"
+                    )
+                seen.add(intent.order_id)
+                order = exchange.order(intent.order_id)
+                if order is None:
+                    raise InvalidTradingPlanError(
+                        f"cancellation order_id {intent.order_id!r} is not active"
+                    )
+                if order.agent_id != trader.agent_id:
+                    raise InvalidTradingPlanError(
+                        f"trader {trader.agent_id!r} cannot cancel order_id "
+                        f"{intent.order_id!r} owned by {order.agent_id!r}"
+                    )
 
     def _validate_components(self, components: object) -> None:
         if not isinstance(components, FinanceComponents):
@@ -427,6 +503,12 @@ class FinanceABMModel(Model, ABC):
         recorder = self.finance.research_recorder
         if recorder is None:
             return
+        for cancellation in result.cancellations:
+            recorder.record_cancellation(
+                period=result.period,
+                sequence_number=cancellation.sequence_number,
+                order=cancellation.order,
+            )
         for outcome in result.outcomes:
             recorder.record_decision(
                 period=result.period,
@@ -467,6 +549,10 @@ class FinanceABMModel(Model, ABC):
         self.record.metric(
             "finance_executed_quantity",
             lambda _model: self._metric_decimal("executed_quantity"),
+        )
+        self.record.metric(
+            "finance_cancellation_count",
+            lambda _model: self._metric_int("cancellation_count"),
         )
         self.record.metric(
             "finance_rejection_count",

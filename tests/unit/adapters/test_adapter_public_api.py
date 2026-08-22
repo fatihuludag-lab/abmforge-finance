@@ -4,6 +4,7 @@ from abmforge_finance.adapters import (
     FinanceABMModel,
     FinanceAdapterError,
     FinanceAdapterNotInitializedError,
+    FinanceCancellationOutcome,
     FinanceClockDriftError,
     FinanceComponents,
     FinanceOrderOutcome,
@@ -15,6 +16,7 @@ from abmforge_finance.adapters import (
 
 def test_adapter_symbols_are_importable_from_adapter_namespace() -> None:
     assert FinanceABMModel.__name__ == "FinanceABMModel"
+    assert FinanceCancellationOutcome.__name__ == "FinanceCancellationOutcome"
     assert FinanceComponents.__name__ == "FinanceComponents"
     assert FinanceOrderOutcome.__name__ == "FinanceOrderOutcome"
     assert FinanceStepResult.__name__ == "FinanceStepResult"

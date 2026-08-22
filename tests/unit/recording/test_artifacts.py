@@ -137,10 +137,10 @@ def test_default_bundle_is_canonical_and_verifiable(tmp_path: Path) -> None:
     )
     verify_finance_artifacts(target)
 
-    assert len(list(target.iterdir())) == 15
+    assert len(list(target.iterdir())) == 17
     manifest = json.loads((target / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["artifact_schema_version"] == "1.0"
-    assert manifest["finance_dataset_schema_version"] == "1.0"
+    assert manifest["artifact_schema_version"] == "1.1"
+    assert manifest["finance_dataset_schema_version"] == "1.1"
     assert manifest["provenance"] == {"git_commit": "abc123", "model_seed": "42"}
 
     participants = [
@@ -159,7 +159,7 @@ def test_jsonl_only_bundle_is_supported(tmp_path: Path) -> None:
         config=FinanceArtifactConfig(write_csv=False),
     )
     verify_finance_artifacts(target)
-    assert len(list(target.iterdir())) == 8
+    assert len(list(target.iterdir())) == 9
     assert not (target / "orders.csv").exists()
 
 

@@ -138,6 +138,23 @@ class Exchange:
         """Return an active resting order without exposing mutable book internals."""
         return self._matching.book.get(order_id)
 
+    def active_order_ids(self, participant_id: str) -> tuple[str, ...]:
+        """Return a participant's active order identifiers in submission order."""
+        self._clearing.account(participant_id)
+        active = tuple(
+            order
+            for side in Side
+            for order in self._matching.book.orders_by_priority(side)
+            if order.agent_id == participant_id
+        )
+        return tuple(
+            order.order_id
+            for order in sorted(
+                active,
+                key=lambda order: (order.sequence_number, order.order_id),
+            )
+        )
+
     def snapshot(self, *, levels: int | None = None) -> OrderBookSnapshot:
         """Return an immutable order-book snapshot."""
         return self._matching.book.snapshot(levels=levels)

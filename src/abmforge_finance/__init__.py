@@ -21,6 +21,7 @@ from abmforge_finance.domain import (
 from abmforge_finance.exceptions import (
     CalibrationError,
     CalibrationExecutionError,
+    CalibrationInferenceError,
     ClearingError,
     CrossingOrderError,
     DomainValidationError,
@@ -104,6 +105,7 @@ __all__ = [
     "Account",
     "CalibrationError",
     "CalibrationExecutionError",
+    "CalibrationInferenceError",
     "CancelIntent",
     "ClearingEngine",
     "ClearingError",

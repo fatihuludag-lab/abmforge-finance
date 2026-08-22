@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the `LimitOrderBook` class example docstring.
 
 ### Added
+- Deterministic one-shot `PassiveLiquidityPolicy` for controlled one-sided GTC liquidity.
+- Paired passive-liquidity baseline supporting reproducible two-sided static depth around the fundamental value.
+- ADR-015 documenting why dynamic cancel/replace and multi-action policy output are deferred to Phase 9B.
 - Unannualized full-sample and rolling realized volatility with explicit gap semantics.
 - Exact drawdown, maximum drawdown, depth depletion, spread amplification, and absolute dislocation metrics.
 - Unweighted decision and accepted-order sign concentration distinct from quantity-weighted flow imbalance.

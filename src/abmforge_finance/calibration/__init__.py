@@ -25,6 +25,15 @@ from abmforge_finance.calibration.summary import (
     CalibrationSummary,
     summarize_calibration_runs,
 )
+from abmforge_finance.calibration.sweeps import (
+    run_noise_activity_sweep,
+    run_noise_population_sweep,
+    run_quote_width_sweep,
+)
+from abmforge_finance.calibration.tracking import (
+    FundamentalTrackingBenchmarkConfig,
+    run_fundamental_tracking_benchmark,
+)
 
 __all__ = [
     "CalibrationExperimentResult",
@@ -35,11 +44,16 @@ __all__ = [
     "CalibrationSummary",
     "ConstantFundamentalBenchmarkConfig",
     "DatasetFactory",
+    "FundamentalTrackingBenchmarkConfig",
     "evaluate_calibration_dataset",
     "run_and_summarize_calibration",
     "run_calibration_replicates",
     "run_constant_fundamental_benchmark",
+    "run_fundamental_tracking_benchmark",
+    "run_noise_activity_sweep",
+    "run_noise_population_sweep",
     "run_passive_depth_sweep",
+    "run_quote_width_sweep",
     "summarize_calibration_runs",
     "validate_seed_tuple",
 ]

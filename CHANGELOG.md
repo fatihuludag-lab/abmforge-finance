@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the `LimitOrderBook` class example docstring.
 
 ### Added
+- Deterministic moving-fundamental tracking benchmark using existing midpoint dislocation as tracking error.
+- Common-seed quote-width, noise-activity, and noise-population calibration sweeps.
+- ADR-018 documenting benchmark-family and common-random-number semantics.
 - Baseline market calibration contracts with canonical scenario fingerprints and explicit replicate seeds.
 - Replicate-level market-ecology outcomes and descriptive multi-seed summaries without embedded inferential tests.
 - Controlled constant-fundamental benchmark and common-seed passive-depth sweep.

@@ -29,8 +29,12 @@ market states, accounts, and positions, and can be written as canonical JSONL/CS
 bundles with explicit provenance and SHA-256 integrity metadata. Primitive market
 metrics now cover price series and returns, relative spread and displayed depth,
 fundamental-price deviation, decision/accepted/aggressor order-flow imbalance, and
-trade count, volume, and VWAP. Rolling/stress metrics, validation suites, calibrated
-market ecology, and RL environments remain planned.
+trade count, volume, and VWAP. Stability metrics add unannualized realized volatility,
+rolling realized volatility, exact drawdown and maximum drawdown, explicit-reference
+depth depletion and spread amplification, directional sign concentration, absolute
+price/fundamental dislocation, and explicit-threshold tail-event indicators. Stress
+experiment validation, calibrated market ecology, recovery-time analysis, and RL
+environments remain planned.
 ## Planned research scope
 
 The first research core will support a single risky asset, a central exchange, a
@@ -410,6 +414,63 @@ and quantity executed immediately by the incoming/aggressor order. Trade count,
 trade volume, and VWAP are computed from committed trades. Exact algebraic metrics
 remain `Decimal`; natural-log returns are finite statistical `float` values.
 
+
+## Stability, synchronization, and tail-event metrics
+
+The stability layer extends the primitive market metrics without changing their
+price-basis or missing-data semantics.
+
+```python
+from decimal import Decimal
+
+from abmforge_finance.metrics import (
+    decision_sign_concentration,
+    depth_depletion,
+    downside_return_breaches,
+    drawdowns,
+    maximum_drawdown,
+    realized_volatility,
+    rolling_realized_volatility,
+    spread_amplification,
+)
+
+rv = realized_volatility(dataset)
+rolling_rv = rolling_realized_volatility(dataset, window=20)
+
+dd = drawdowns(dataset)
+mdd = maximum_drawdown(dataset)
+
+depth_stress = depth_depletion(
+    dataset,
+    reference_depth=Decimal("100"),
+)
+spread_stress = spread_amplification(
+    dataset,
+    reference_spread=Decimal("2"),
+)
+
+synchronization = decision_sign_concentration(dataset)
+
+large_down_moves = downside_return_breaches(
+    dataset,
+    threshold=Decimal("0.10"),
+)
+```
+
+Realized volatility is unannualized and uses the square root of the sum of squared
+adjacent-period log returns. Missing prices or period gaps remain explicit instead of
+being silently bridged. Drawdown is `P_t / running_peak_t - 1`.
+
+Liquidity stress requires caller-supplied reference depth and spread values. The
+library does not infer the first row as a baseline. Decision and accepted-order sign
+concentration are unweighted directional-concentration measures and are deliberately
+separate from quantity-weighted order-flow imbalance.
+
+Tail-event indicators also require explicit thresholds. ABMForge-Finance does not
+hard-code a universal definition of a crash. Recovery-time analysis is deferred to
+the stress-experiment layer because it requires an explicit shock window, baseline,
+and recovery criterion.
+
 ## Installation
 
 The current package is intended for development use.
@@ -464,6 +525,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-011: Finance research recording and dataset boundary](docs/adr/ADR-011-finance-research-recording-and-dataset-boundary.md)
 - [ADR-012: Deterministic finance research artifacts and canonical serialization](docs/adr/ADR-012-deterministic-finance-research-artifacts-and-canonical-serialization.md)
 - [ADR-013: Finance market metrics and statistical semantics](docs/adr/ADR-013-finance-market-metrics-and-statistical-semantics.md)
+- [ADR-014: Stability, synchronization, and tail-event metric semantics](docs/adr/ADR-014-stability-synchronization-and-tail-event-metric-semantics.md)
 
 ## Development workflow
 
@@ -483,6 +545,7 @@ feat/abmforge-adapter
 feat/finance-recorder
 feat/finance-artifacts
 feat/market-metrics
+feat/stability-metrics
 ```
 
 ## License

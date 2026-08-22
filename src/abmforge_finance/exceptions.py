@@ -232,3 +232,11 @@ class FinanceArtifactExistsError(FinanceArtifactError):
 
 class FinanceArtifactVerificationError(FinanceArtifactError):
     """Raised when a persisted finance artifact bundle fails verification."""
+
+
+class MetricsError(FinanceError):
+    """Base class for finance research-metric failures."""
+
+
+class InvalidMetricInputError(MetricsError):
+    """Raised when recorded data cannot support a requested metric contract."""

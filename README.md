@@ -26,8 +26,11 @@ observations, deterministic decision-to-order conversion, named finance componen
 seeds, Exchange submission, and model-level ABMForge Recorder metrics. Finance research
 datasets preserve exact `Decimal` values for participants, decisions, orders, trades,
 market states, accounts, and positions, and can be written as canonical JSONL/CSV
-bundles with explicit provenance and SHA-256 integrity metadata. Market metrics,
-validation suites, calibrated market ecology, and RL environments remain planned.
+bundles with explicit provenance and SHA-256 integrity metadata. Primitive market
+metrics now cover price series and returns, relative spread and displayed depth,
+fundamental-price deviation, decision/accepted/aggressor order-flow imbalance, and
+trade count, volume, and VWAP. Rolling/stress metrics, validation suites, calibrated
+market ecology, and RL environments remain planned.
 ## Planned research scope
 
 The first research core will support a single risky asset, a central exchange, a
@@ -364,6 +367,49 @@ creation is no-overwrite and commits a completed temporary directory atomically.
 SHA-256 verification provides integrity checking relative to the manifest; it is not
 presented as cryptographic authenticity.
 
+
+## Primitive market metrics
+
+The framework-independent `abmforge_finance.metrics` layer derives research metrics
+directly from a validated `FinanceResearchDataset`. Price-based metrics require an
+explicit basis and never silently fall back between midpoint and last-trade price.
+
+```python
+from abmforge_finance.metrics import (
+    MarketPriceBasis,
+    accepted_order_flow_imbalance,
+    decision_flow_imbalance,
+    fundamental_deviation,
+    relative_spreads,
+    simple_returns,
+    trade_volume,
+    trade_vwap,
+)
+
+returns = simple_returns(dataset, basis=MarketPriceBasis.MID)
+spreads = relative_spreads(dataset)
+dislocation = fundamental_deviation(dataset, basis=MarketPriceBasis.MID)
+
+decision_flow = decision_flow_imbalance(dataset)
+accepted_flow = accepted_order_flow_imbalance(dataset)
+
+volume = trade_volume(dataset)
+vwap = trade_vwap(dataset)
+```
+
+Simple returns use `P_t / P_(t-1) - 1`; log returns use the natural logarithm of the
+same adjacent-period price ratio. The first observation, a missing endpoint, or a
+non-consecutive period gap produces `None` rather than an imputed value. Relative
+spread is `spread / mid_price`; total displayed depth is bid depth plus ask depth.
+Signed fundamental deviation is `P_t - F_t`, with a relative form
+`P_t / F_t - 1`.
+
+Directional-flow metrics intentionally preserve separate populations: policy
+decisions (where `HOLD` has no directional quantity), accepted submitted orders,
+and quantity executed immediately by the incoming/aggressor order. Trade count,
+trade volume, and VWAP are computed from committed trades. Exact algebraic metrics
+remain `Decimal`; natural-log returns are finite statistical `float` values.
+
 ## Installation
 
 The current package is intended for development use.
@@ -417,6 +463,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-010: ABMForge integration and finance orchestration boundary](docs/adr/ADR-010-abmforge-integration-and-finance-orchestration-boundary.md)
 - [ADR-011: Finance research recording and dataset boundary](docs/adr/ADR-011-finance-research-recording-and-dataset-boundary.md)
 - [ADR-012: Deterministic finance research artifacts and canonical serialization](docs/adr/ADR-012-deterministic-finance-research-artifacts-and-canonical-serialization.md)
+- [ADR-013: Finance market metrics and statistical semantics](docs/adr/ADR-013-finance-market-metrics-and-statistical-semantics.md)
 
 ## Development workflow
 
@@ -435,6 +482,7 @@ feat/baseline-policies
 feat/abmforge-adapter
 feat/finance-recorder
 feat/finance-artifacts
+feat/market-metrics
 ```
 
 ## License

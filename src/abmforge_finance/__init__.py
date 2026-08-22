@@ -19,6 +19,8 @@ from abmforge_finance.domain import (
     TradingPlan,
 )
 from abmforge_finance.exceptions import (
+    CalibrationError,
+    CalibrationExecutionError,
     ClearingError,
     CrossingOrderError,
     DomainValidationError,
@@ -37,6 +39,7 @@ from abmforge_finance.exceptions import (
     InsufficientInventoryError,
     InvalidAccountError,
     InvalidBookOrderError,
+    InvalidCalibrationError,
     InvalidClearingRegistrationError,
     InvalidDecisionError,
     InvalidDepthError,
@@ -99,6 +102,8 @@ except PackageNotFoundError:  # pragma: no cover - only for an unpackaged source
 
 __all__ = [
     "Account",
+    "CalibrationError",
+    "CalibrationExecutionError",
     "CancelIntent",
     "ClearingEngine",
     "ClearingError",
@@ -129,6 +134,7 @@ __all__ = [
     "InsufficientInventoryError",
     "InvalidAccountError",
     "InvalidBookOrderError",
+    "InvalidCalibrationError",
     "InvalidClearingRegistrationError",
     "InvalidDecisionError",
     "InvalidDepthError",

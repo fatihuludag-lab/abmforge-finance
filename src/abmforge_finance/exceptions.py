@@ -244,3 +244,15 @@ class MetricsError(FinanceError):
 
 class InvalidMetricInputError(MetricsError):
     """Raised when recorded data cannot support a requested metric contract."""
+
+
+class CalibrationError(FinanceError):
+    """Base class for controlled finance calibration and benchmark failures."""
+
+
+class InvalidCalibrationError(CalibrationError):
+    """Raised when a calibration scenario, treatment, or summary is invalid."""
+
+
+class CalibrationExecutionError(CalibrationError):
+    """Raised when a calibration replicate violates its execution contract."""

@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the `LimitOrderBook` class example docstring.
 
 ### Added
+- Baseline market calibration contracts with canonical scenario fingerprints and explicit replicate seeds.
+- Replicate-level market-ecology outcomes and descriptive multi-seed summaries without embedded inferential tests.
+- Controlled constant-fundamental benchmark and common-seed passive-depth sweep.
+- ADR-017 documenting baseline ecology, replication, and calibration semantics.
 - Deterministic two-phase finance orchestration: all validated cancellations execute before all submissions.
 - Successful cancellation provenance in finance dataset schema 1.1 and artifact schema 1.1.
 - Participant-scoped active-order introspection for cancel/replace-aware policies.

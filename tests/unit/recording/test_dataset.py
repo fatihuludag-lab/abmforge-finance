@@ -19,6 +19,7 @@ def test_empty_dataset_is_valid_and_counts_are_stable() -> None:
     assert dataset.row_counts == {
         "participants": 0,
         "decisions": 0,
+        "cancellations": 0,
         "orders": 0,
         "trades": 0,
         "market_states": 0,

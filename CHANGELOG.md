@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the `LimitOrderBook` class example docstring.
 
 ### Added
+- Deterministic two-phase finance orchestration: all validated cancellations execute before all submissions.
+- Successful cancellation provenance in finance dataset schema 1.1 and artifact schema 1.1.
+- Participant-scoped active-order introspection for cancel/replace-aware policies.
 - Immutable `TradingPlan` and `CancelIntent` primitives preserving one decision per trader-period.
 - `TradingPlanPolicy` protocol and trader normalization for legacy and cancel/replace-aware policies.
 - Stateless `DynamicPassiveLiquidityPolicy` for fundamental-relative periodic requoting.

@@ -1,4 +1,4 @@
-"""Immutable schema-v1 rows for finance research recording."""
+"""Immutable schema-v1.1 rows for finance research recording."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Literal
 
-FINANCE_DATASET_SCHEMA_VERSION = "1.0"
+FINANCE_DATASET_SCHEMA_VERSION = "1.1"
 RecordingPhase = Literal["initial", "post"]
 
 
@@ -57,6 +57,21 @@ class OrderRecord:
     rested: bool
     rejection_type: str | None
     rejection_message: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class CancellationRecord:
+    """One successfully executed cancellation with original-order provenance."""
+
+    period: int
+    sequence_number: int
+    agent_id: str
+    order_id: str
+    order_sequence_number: int
+    instrument_id: str
+    side: str
+    limit_price: Decimal
+    cancelled_quantity: Decimal
 
 
 @dataclass(frozen=True, slots=True)

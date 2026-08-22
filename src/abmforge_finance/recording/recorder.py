@@ -12,6 +12,7 @@ from abmforge_finance.market import Exchange, ExchangeResult, OrderBookSnapshot
 from abmforge_finance.recording.dataset import FinanceResearchDataset
 from abmforge_finance.recording.schema import (
     AccountRecord,
+    CancellationRecord,
     DecisionRecord,
     MarketStateRecord,
     OrderRecord,
@@ -34,6 +35,7 @@ class FinanceRecordingConfig:
     record_market_states: bool = True
     record_accounts: bool = True
     record_positions: bool = True
+    record_cancellations: bool = True
 
 
 class FinanceResearchRecorder:
@@ -41,6 +43,7 @@ class FinanceResearchRecorder:
 
     __slots__ = (
         "_accounts",
+        "_cancellations",
         "_decisions",
         "_market_states",
         "_orders",
@@ -60,6 +63,7 @@ class FinanceResearchRecorder:
         self._participant_ids: tuple[str, ...] = ()
         self._participants: list[ParticipantRecord] = []
         self._decisions: list[DecisionRecord] = []
+        self._cancellations: list[CancellationRecord] = []
         self._orders: list[OrderRecord] = []
         self._trades: list[TradeRecord] = []
         self._market_states: list[MarketStateRecord] = []
@@ -79,6 +83,7 @@ class FinanceResearchRecorder:
         dataset = FinanceResearchDataset(
             participants=tuple(self._participants),
             decisions=tuple(self._decisions),
+            cancellations=tuple(self._cancellations),
             orders=tuple(self._orders),
             trades=tuple(self._trades),
             market_states=tuple(self._market_states),
@@ -148,6 +153,39 @@ class FinanceResearchRecorder:
                 time_in_force=None
                 if decision.time_in_force is None
                 else decision.time_in_force.value,
+            )
+        )
+
+    def record_cancellation(
+        self,
+        *,
+        period: int,
+        sequence_number: int,
+        order: Order,
+    ) -> None:
+        """Record one successfully executed cancellation."""
+        self._require_started()
+        if not self.config.record_cancellations:
+            return
+        if isinstance(sequence_number, bool) or not isinstance(sequence_number, int):
+            raise RecordingStateError("cancellation sequence_number must be an integer")
+        if sequence_number < 0:
+            raise RecordingStateError("cancellation sequence_number must be non-negative")
+        if not isinstance(order, Order):
+            raise TypeError("order must be an Order")
+        if order.price is None:
+            raise RecordingStateError("cancelled resting order must have a limit price")
+        self._cancellations.append(
+            CancellationRecord(
+                period=period,
+                sequence_number=sequence_number,
+                agent_id=order.agent_id,
+                order_id=order.order_id,
+                order_sequence_number=order.sequence_number,
+                instrument_id=order.instrument_id,
+                side=order.side.value,
+                limit_price=order.price,
+                cancelled_quantity=order.remaining_quantity,
             )
         )
 

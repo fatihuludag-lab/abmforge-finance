@@ -11,6 +11,7 @@ from abmforge_finance.recording.recorder import FinanceRecordingConfig, FinanceR
 from abmforge_finance.recording.schema import (
     FINANCE_DATASET_SCHEMA_VERSION,
     AccountRecord,
+    CancellationRecord,
     DecisionRecord,
     MarketStateRecord,
     OrderRecord,
@@ -23,6 +24,7 @@ __all__ = [
     "FINANCE_ARTIFACT_SCHEMA_VERSION",
     "FINANCE_DATASET_SCHEMA_VERSION",
     "AccountRecord",
+    "CancellationRecord",
     "DecisionRecord",
     "FinanceArtifactConfig",
     "FinanceRecordingConfig",

@@ -82,6 +82,7 @@ def test_recording_config_can_disable_optional_tables() -> None:
     assert recorder.dataset.row_counts == {
         "participants": 2,
         "decisions": 0,
+        "cancellations": 0,
         "orders": 0,
         "trades": 0,
         "market_states": 0,

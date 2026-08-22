@@ -26,6 +26,7 @@ from abmforge_finance.recording.dataset import FinanceResearchDataset
 from abmforge_finance.recording.schema import (
     FINANCE_DATASET_SCHEMA_VERSION,
     AccountRecord,
+    CancellationRecord,
     DecisionRecord,
     MarketStateRecord,
     OrderRecord,
@@ -34,7 +35,7 @@ from abmforge_finance.recording.schema import (
     TradeRecord,
 )
 
-FINANCE_ARTIFACT_SCHEMA_VERSION = "1.0"
+FINANCE_ARTIFACT_SCHEMA_VERSION = "1.1"
 
 try:
     _PACKAGE_VERSION = version("abmforge-finance")
@@ -44,6 +45,7 @@ except PackageNotFoundError:  # pragma: no cover
 FinanceRecord: TypeAlias = (
     ParticipantRecord
     | DecisionRecord
+    | CancellationRecord
     | OrderRecord
     | TradeRecord
     | MarketStateRecord
@@ -54,6 +56,7 @@ FinanceRecord: TypeAlias = (
 _TABLE_ORDER = (
     "participants",
     "decisions",
+    "cancellations",
     "orders",
     "trades",
     "market_states",
@@ -77,6 +80,17 @@ _TABLE_COLUMNS: dict[str, tuple[str, ...]] = {
         "quantity",
         "price",
         "time_in_force",
+    ),
+    "cancellations": (
+        "period",
+        "sequence_number",
+        "agent_id",
+        "order_id",
+        "order_sequence_number",
+        "instrument_id",
+        "side",
+        "limit_price",
+        "cancelled_quantity",
     ),
     "orders": (
         "period",
@@ -177,6 +191,13 @@ def _rows(dataset: FinanceResearchDataset, table: str) -> tuple[FinanceRecord, .
         return tuple(sorted(dataset.participants, key=lambda row: row.agent_id))
     if table == "decisions":
         return tuple(sorted(dataset.decisions, key=lambda row: (row.period, row.agent_id)))
+    if table == "cancellations":
+        return tuple(
+            sorted(
+                dataset.cancellations,
+                key=lambda row: (row.period, row.sequence_number, row.order_id),
+            )
+        )
     if table == "orders":
         return tuple(
             sorted(dataset.orders, key=lambda row: (row.period, row.sequence_number, row.order_id))

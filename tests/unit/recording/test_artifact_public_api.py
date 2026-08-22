@@ -9,7 +9,7 @@ from abmforge_finance.recording import (
 
 
 def test_artifact_public_api() -> None:
-    assert FINANCE_ARTIFACT_SCHEMA_VERSION == "1.0"
+    assert FINANCE_ARTIFACT_SCHEMA_VERSION == "1.1"
     assert FinanceArtifactConfig is not None
     assert write_finance_artifacts is not None
     assert verify_finance_artifacts is not None

@@ -82,6 +82,7 @@ def test_adapter_records_decisions_order_trade_market_and_balances() -> None:
     assert dataset.row_counts == {
         "participants": 2,
         "decisions": 2,
+        "cancellations": 0,
         "orders": 1,
         "trades": 1,
         "market_states": 1,

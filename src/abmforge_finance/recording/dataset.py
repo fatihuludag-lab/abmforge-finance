@@ -9,6 +9,7 @@ from abmforge_finance.exceptions import InvalidFinanceDatasetError
 from abmforge_finance.recording.schema import (
     FINANCE_DATASET_SCHEMA_VERSION,
     AccountRecord,
+    CancellationRecord,
     DecisionRecord,
     MarketStateRecord,
     OrderRecord,
@@ -38,6 +39,7 @@ class FinanceResearchDataset:
     market_states: tuple[MarketStateRecord, ...] = ()
     accounts: tuple[AccountRecord, ...] = ()
     positions: tuple[PositionRecord, ...] = ()
+    cancellations: tuple[CancellationRecord, ...] = ()
 
     @property
     def row_counts(self) -> dict[str, int]:
@@ -46,6 +48,7 @@ class FinanceResearchDataset:
         return {
             "participants": len(self.participants),
             "decisions": len(self.decisions),
+            "cancellations": len(self.cancellations),
             "orders": len(self.orders),
             "trades": len(self.trades),
             "market_states": len(self.market_states),
@@ -66,6 +69,14 @@ class FinanceResearchDataset:
             ((row.period, row.agent_id) for row in self.decisions),
             label="decision (period, agent_id)",
         )
+        _require_unique(
+            (row.order_id for row in self.cancellations),
+            label="cancelled order_id",
+        )
+        _require_unique(
+            ((row.period, row.sequence_number) for row in self.cancellations),
+            label="cancellation (period, sequence_number)",
+        )
         _require_unique((row.order_id for row in self.orders), label="order_id")
         _require_unique((row.trade_id for row in self.trades), label="trade_id")
         _require_unique((row.period for row in self.market_states), label="market-state period")
@@ -80,6 +91,7 @@ class FinanceResearchDataset:
 
         if (
             any(row.period < 0 for row in self.decisions)
+            or any(row.period < 0 for row in self.cancellations)
             or any(row.period < 0 for row in self.orders)
             or any(row.period < 0 for row in self.trades)
             or any(row.period < 0 for row in self.market_states)
@@ -87,6 +99,10 @@ class FinanceResearchDataset:
             or any(row.period < 0 for row in self.positions)
         ):
             raise InvalidFinanceDatasetError("recorded periods must be non-negative")
+        if any(
+            row.sequence_number < 0 or row.order_sequence_number < 0 for row in self.cancellations
+        ):
+            raise InvalidFinanceDatasetError("cancellation sequence numbers must be non-negative")
         if any(row.phase not in ("initial", "post") for row in self.accounts) or any(
             row.phase not in ("initial", "post") for row in self.positions
         ):

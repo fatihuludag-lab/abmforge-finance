@@ -620,6 +620,101 @@ quantity must generate greater displayed depth. Claims about volatility, tail ri
 other economic outcomes are evaluated later across replicated treatments rather than
 encoded as unit-test truths.
 
+
+## Calibration benchmark families
+
+Phase 9C.2 extends the baseline ecology with deterministic tracking and
+common-random-number treatment sweeps.
+
+### Fundamental tracking
+
+`FundamentalTrackingBenchmarkConfig` freezes an explicit deterministic fundamental
+path and evaluates whether the quoted midpoint follows that reference under the
+existing dynamic passive-liquidity mechanism.
+
+```python
+from decimal import Decimal
+
+from abmforge_finance.calibration import (
+    FundamentalTrackingBenchmarkConfig,
+    run_fundamental_tracking_benchmark,
+)
+
+tracking = run_fundamental_tracking_benchmark(
+    FundamentalTrackingBenchmarkConfig(
+        fundamental_path=(
+            Decimal("100"),
+            Decimal("102"),
+            Decimal("104"),
+            Decimal("101"),
+        ),
+        passive_quantity=Decimal("2"),
+        noise_activity_bps=0,
+    ),
+    seeds=(101, 202, 303),
+)
+```
+
+The existing `mean_absolute_relative_dislocation` outcome is used as the midpoint
+tracking-error measure. No duplicate tracking metric is introduced. Tick-aligned
+fundamental paths with symmetric passive quotes can mechanically have zero midpoint
+tracking error; non-grid paths expose the error induced by tick geometry.
+
+### Quote-width sweep
+
+```python
+from abmforge_finance.calibration import run_quote_width_sweep
+
+widths = run_quote_width_sweep(
+    config,
+    quote_offset_ticks=(1, 2, 4),
+    seeds=(101, 202, 303),
+)
+```
+
+Under a constant fundamental and intact two-sided book, larger quote offsets
+mechanically produce wider quoted spreads. This is a market-geometry validation, not
+an empirical spread model.
+
+### Noise-activity sweep
+
+```python
+from abmforge_finance.calibration import run_noise_activity_sweep
+
+activity = run_noise_activity_sweep(
+    config,
+    activity_bps=(0, 2500, 5000, 7500, 10000),
+    seeds=(101, 202, 303),
+)
+```
+
+`NoisePolicy` uses a fixed seed/agent/instrument/step draw. Reusing the same replicate
+seeds therefore creates nested active-event sets as `activity_bps` increases. This is
+a common-random-number comparison: increasing the threshold activates additional
+events without changing previously active draws.
+
+### Noise-population sweep
+
+```python
+from abmforge_finance.calibration import run_noise_population_sweep
+
+populations = run_noise_population_sweep(
+    config,
+    noise_trader_counts=(1, 2, 4),
+    seeds=(101, 202, 303),
+)
+```
+
+Population treatments preserve stable prefix identities (`noise-0000`,
+`noise-0001`, ...) so existing agents retain their component seed names under the same
+model seed.
+
+These benchmarks deliberately separate **mechanical truths** from **economic
+tendencies**. Quote width determining quoted spread and deterministic tracking under a
+symmetric tick-aligned fixture may be asserted as software/mechanism properties.
+Claims about volatility, drawdown, tail risk, or liquidity resilience remain
+replicated experimental results rather than universal unit-test assertions.
+
 ## Installation
 
 The current package is intended for development use.
@@ -678,6 +773,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-015: Static passive-liquidity baseline and deferred quote replacement](docs/adr/ADR-015-static-passive-liquidity-baseline-and-deferred-quote-replacement.md)
 - [ADR-016: Cancel/replace trading plans and dynamic passive liquidity](docs/adr/ADR-016-cancel-replace-trading-plans-and-dynamic-passive-liquidity.md)
 - [ADR-017: Baseline market ecology, replication, and calibration semantics](docs/adr/ADR-017-baseline-market-ecology-replication-and-calibration-semantics.md)
+- [ADR-018: Fundamental tracking and common-random-number benchmark sweeps](docs/adr/ADR-018-fundamental-tracking-and-common-random-number-benchmark-sweeps.md)
 
 ## Development workflow
 
@@ -701,6 +797,7 @@ feat/stability-metrics
 feat/passive-liquidity
 feat/dynamic-liquidity
 feat/baseline-market-ecology
+feat/calibration-benchmarks
 ```
 
 ## License

@@ -55,6 +55,7 @@ from abmforge_finance.exceptions import (
     InvalidInstrumentError,
     InvalidMarketTimeError,
     InvalidNarrativeError,
+    InvalidNarrativeTreatmentError,
     InvalidObservationError,
     InvalidOrderError,
     InvalidPolicyError,
@@ -76,6 +77,13 @@ from abmforge_finance.exceptions import (
     PolicyError,
     SettlementInvariantError,
     UnknownParticipantError,
+)
+from abmforge_finance.experiments import (
+    NarrativeAgentAssignment,
+    NarrativeHomogeneityMeasurement,
+    NarrativeHomogeneityTreatment,
+    build_narrative_homogeneity_sweep,
+    measure_narrative_homogeneity,
 )
 from abmforge_finance.market import (
     ClearingEngine,
@@ -154,6 +162,7 @@ __all__ = [
     "InvalidInstrumentError",
     "InvalidMarketTimeError",
     "InvalidNarrativeError",
+    "InvalidNarrativeTreatmentError",
     "InvalidObservationError",
     "InvalidOrderError",
     "InvalidPolicyError",
@@ -171,8 +180,11 @@ __all__ = [
     "MatchResult",
     "MatchingEngine",
     "MatchingEngineError",
+    "NarrativeAgentAssignment",
     "NarrativeDirection",
     "NarrativeExposure",
+    "NarrativeHomogeneityMeasurement",
+    "NarrativeHomogeneityTreatment",
     "NarrativePolicy",
     "NarrativeSignal",
     "NarrativeState",
@@ -204,4 +216,6 @@ __all__ = [
     "UnknownParticipantError",
     "__version__",
     "aggregate_narrative_signal",
+    "build_narrative_homogeneity_sweep",
+    "measure_narrative_homogeneity",
 ]

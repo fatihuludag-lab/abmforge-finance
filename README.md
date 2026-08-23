@@ -1598,6 +1598,97 @@ confirmatory_eligible = false
 A successful precision decision authorizes the next confirmatory stage; it does not
 constitute evidence for a substantive narrative-homogeneity market effect.
 
+
+## Prespecified confirmatory inference and Holm reporting
+
+Phase 10F implements the confirmatory inference contract frozen by the flagship study
+protocol. It does **not** run the official confirmatory experiment during development.
+
+The confirmatory execution boundary is:
+
+```text
+immutable precision-pilot artifact
+        |
+        v
+exact SHA-256 + protocol verification
+        |
+        v
+selected_seed_count = 10
+        |
+        v
+fresh confirmatory seed namespace
+        |
+        v
+prove pilot / confirmatory seed overlap = 0
+        |
+        v
+5 homogeneity levels x 10 seeds
+        |
+        v
+paired treatment-minus-control estimates
+        |
+        v
+primary two-sided Student-t p-values
+        |
+        v
+Holm correction across 8 primary hypotheses
+        |
+        v
+canonical confirmatory artifact
+```
+
+The formal primary family contains two primary outcomes and four non-control
+homogeneity contrasts per outcome:
+
+```text
+2 primary outcomes x 4 treatment-control contrasts = 8 hypotheses
+```
+
+Family-wise error is controlled with the prespecified Holm procedure at:
+
+```text
+alpha = 0.05
+```
+
+Primary contrasts report paired effect estimates, standard errors, nominal 95%
+confidence intervals, raw two-sided p-values, Holm-adjusted p-values, and Holm rejection
+decisions.
+
+The confidence intervals are explicitly labelled:
+
+```text
+nominal-per-contrast-not-familywise
+```
+
+Holm multiplicity control applies to the eight primary p-values; the nominal confidence
+intervals are estimation intervals and are not presented as simultaneous family-wise
+intervals.
+
+Secondary, mechanism, and diagnostic outcomes remain estimation-only in the canonical
+confirmatory artifact. They may report paired effects, standard errors, and nominal
+confidence intervals, but they do not receive p-values, Holm-adjusted p-values, or
+formal rejection flags.
+
+Confirmatory execution is gated by the archived Phase 10E precision artifact with
+SHA-256:
+
+```text
+b43e9a1bfc6a40eadd0c38958068212a12d6feabfc8303c40917284a38d0be84
+```
+
+The accepted precision decision is:
+
+```text
+selected_seed_count = 10
+confirmatory_eligible = true
+```
+
+Pilot and confirmatory seeds are derived from distinct protocol namespaces and exact
+seed overlap is forbidden.
+
+The official 50-simulation confirmatory run is intentionally deferred until this Phase
+10F implementation has been merged and the post-merge `main` CI is green.
+
 ## Installation
 
 The current package is intended for development use.
@@ -1665,6 +1756,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-024: Multi-seed narrative-stability benchmark and paired inference](docs/adr/ADR-024-multi-seed-narrative-stability-benchmark-and-paired-inference.md)
 - [ADR-025: Prespecified flagship narrative-stability study protocol](docs/adr/ADR-025-prespecified-flagship-narrative-stability-study-protocol.md)
 - [ADR-026: Independent precision-pilot execution and canonical result artifact](docs/adr/ADR-026-independent-precision-pilot-execution-and-canonical-artifact.md)
+- [ADR-027: Prespecified confirmatory inference and Holm reporting](docs/adr/ADR-027-prespecified-confirmatory-inference-and-holm-reporting.md)
 
 ## Development workflow
 
@@ -1697,6 +1789,7 @@ feat/narrative-market-stability
 feat/narrative-stability-inference
 feat/flagship-study-protocol
 feat/flagship-precision-pilot
+feat/confirmatory-holm-inference
 ```
 
 ## License

@@ -317,6 +317,54 @@ def paired_treatment_contrast(
     )
 
 
+def student_t_two_sided_p_value(
+    t_statistic: float,
+    degrees_of_freedom: int,
+) -> float:
+    """Return a two-sided Student-t p-value for a t statistic."""
+
+    df = _positive_int(
+        degrees_of_freedom,
+        field_name="degrees_of_freedom",
+    )
+    if isinstance(t_statistic, bool) or not isinstance(
+        t_statistic,
+        (int, float),
+    ):
+        raise CalibrationInferenceError("t_statistic must be a real number")
+    statistic = float(t_statistic)
+    if math.isnan(statistic):
+        raise CalibrationInferenceError("t_statistic must not be NaN")
+    if math.isinf(statistic):
+        return 0.0
+
+    upper_tail = 1.0 - _student_t_cdf(abs(statistic), df)
+    return min(1.0, max(0.0, 2.0 * upper_tail))
+
+
+def paired_treatment_two_sided_p_value(
+    contrast: PairedTreatmentContrast,
+) -> float:
+    """Return the paired two-sided Student-t p-value for a contrast."""
+
+    if not isinstance(contrast, PairedTreatmentContrast):
+        raise TypeError("contrast must be a PairedTreatmentContrast")
+    if (
+        not math.isfinite(contrast.mean_difference)
+        or not math.isfinite(contrast.standard_error)
+        or contrast.standard_error < 0.0
+    ):
+        raise CalibrationInferenceError(
+            "contrast mean_difference and standard_error must be finite, with standard_error >= 0"
+        )
+    if contrast.standard_error == 0.0:
+        return 1.0 if contrast.mean_difference == 0.0 else 0.0
+    return student_t_two_sided_p_value(
+        contrast.mean_difference / contrast.standard_error,
+        contrast.pair_count - 1,
+    )
+
+
 def summarize_contrast_region(
     contrasts: tuple[PairedTreatmentContrast, ...],
 ) -> ContrastRegionSummary:

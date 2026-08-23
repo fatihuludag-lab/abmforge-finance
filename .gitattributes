@@ -1,0 +1,2 @@
+/artifacts/flagship/*.json text eol=lf
+/artifacts/flagship/*.sha256 text eol=lf

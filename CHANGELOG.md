@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the `LimitOrderBook` class example docstring.
 
 ### Added
+- Immutable narrative state, exposure, and exact aggregate signal domain primitives.
+- Deterministic NarrativePolicy mapping frozen narrative pressure to market buy/sell/hold decisions.
+- Half-open time-varying narrative streams with overlap and exposure-reference validation.
+- End-to-end narrative-policy integration through the existing Trader, Exchange, and research recorder stack.
+- ADR-021 documenting the deterministic narrative signal and policy boundary.
 - Single-parameter treatment-family robustness audits over seed-paired contrasts.
 - Explicit directional robustness classifications separated from individual CI exclusion.
 - Dimensionless normalized sensitivity when control parameter and metric scales are valid.

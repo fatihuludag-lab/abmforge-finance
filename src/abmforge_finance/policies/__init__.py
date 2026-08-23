@@ -2,6 +2,7 @@
 
 from abmforge_finance.policies.base import TradingPlanPolicy, TradingPolicy
 from abmforge_finance.policies.fundamental import FundamentalPolicy
+from abmforge_finance.policies.narrative import NarrativePolicy
 from abmforge_finance.policies.noise import NoisePolicy
 from abmforge_finance.policies.passive import (
     DynamicPassiveLiquidityPolicy,
@@ -12,6 +13,7 @@ from abmforge_finance.policies.trend import TrendFollowingPolicy
 __all__ = [
     "DynamicPassiveLiquidityPolicy",
     "FundamentalPolicy",
+    "NarrativePolicy",
     "NoisePolicy",
     "PassiveLiquidityPolicy",
     "TradingPlanPolicy",

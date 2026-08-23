@@ -843,6 +843,87 @@ contracts, benchmark treatment families, seed-paired uncertainty, directional
 robustness, normalized sensitivity where defined, and machine-readable baseline
 ecology audit results.
 
+
+## Deterministic narrative signal layer
+
+Phase 10A introduces a framework-independent narrative mechanism before any external
+AI/LLM integration. Narrative state, agent exposure, aggregate signal, and the
+resulting trading decision are deterministic and independently testable.
+
+```python
+from decimal import Decimal
+
+from abmforge_finance import (
+    NarrativeDirection,
+    NarrativeExposure,
+    NarrativePolicy,
+    NarrativeState,
+)
+
+policy = NarrativePolicy(
+    quantity=Decimal("1"),
+    narratives=(
+        NarrativeState(
+            narrative_id="growth",
+            direction=NarrativeDirection.BULLISH,
+            strength=Decimal("0.8"),
+            confidence=Decimal("0.9"),
+            active_from=0,
+            active_until=10,
+        ),
+    ),
+    exposures=(
+        NarrativeExposure(
+            agent_id="trader-0001",
+            narrative_id="growth",
+            exposure_weight=Decimal("0.75"),
+        ),
+    ),
+    decision_threshold=Decimal("0.25"),
+)
+```
+
+For agent `i`, narrative `n`, and step `t`, the exact contribution is
+
+```text
+z_i,n,t = direction_n,t * strength_n,t * confidence_n,t * exposure_i,n
+```
+
+and the aggregate narrative pressure is the sum of all active exposed narrative
+streams:
+
+```text
+z_i,t = sum_n z_i,n,t
+```
+
+The policy uses a symmetric deterministic dead band:
+
+```text
+z_i,t >  threshold  -> BUY
+z_i,t < -threshold  -> SELL
+otherwise           -> HOLD
+```
+
+`NarrativeState` uses half-open time intervals `[active_from, active_until)`. The same
+conceptual `narrative_id` may change direction, strength, or confidence across
+non-overlapping intervals. Overlapping states for the same narrative stream are
+rejected as ambiguous.
+
+`NarrativeExposure` deliberately contains one agent-side multiplicative exposure
+weight in Phase 10A. A second susceptibility factor is deferred to avoid introducing
+an unnecessary non-identifiability before the core narrative-to-decision mechanism is
+validated.
+
+Multiple simultaneously active narrative streams can reinforce or cancel one another,
+and aggregation uses exact `Decimal` arithmetic. The resulting `NarrativePolicy`
+composes with the existing `Trader -> TradingDecision -> Exchange -> Recorder` path;
+Exchange and ABMForge adapter semantics are unchanged.
+
+Phase 10A intentionally does **not** include LLM calls, prompt templates, social
+diffusion, population-homogeneity treatments, adaptive susceptibility, or claims that
+the deterministic policy is an empirical model of investor behavior. Those are
+separate treatment layers built on top of this mechanism.
+
 ## Installation
 
 The current package is intended for development use.
@@ -904,6 +985,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-018: Fundamental tracking and common-random-number benchmark sweeps](docs/adr/ADR-018-fundamental-tracking-and-common-random-number-benchmark-sweeps.md)
 - [ADR-019: Paired treatment contrasts and confidence intervals](docs/adr/ADR-019-paired-treatment-contrasts-and-confidence-intervals.md)
 - [ADR-020: Robustness, sensitivity, and baseline ecology audit semantics](docs/adr/ADR-020-robustness-sensitivity-and-baseline-ecology-audit-semantics.md)
+- [ADR-021: Deterministic narrative signal and policy boundary](docs/adr/ADR-021-deterministic-narrative-signal-and-policy-boundary.md)
 
 ## Development workflow
 
@@ -930,6 +1012,7 @@ feat/baseline-market-ecology
 feat/calibration-benchmarks
 feat/calibration-inference
 feat/calibration-robustness
+feat/narrative-signal-layer
 ```
 
 ## License

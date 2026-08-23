@@ -166,6 +166,10 @@ class FundamentalPathExhaustedError(FundamentalValueError):
     """Raised when a frozen fundamental path is queried outside its defined horizon."""
 
 
+class InvalidNarrativeError(DomainValidationError):
+    """Raised when narrative state, exposure, or signal values are invalid."""
+
+
 class InvalidObservationError(DomainValidationError):
     """Raised when a policy-facing market observation violates its value contract."""
 

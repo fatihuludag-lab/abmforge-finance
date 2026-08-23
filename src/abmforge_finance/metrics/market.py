@@ -169,6 +169,40 @@ def total_depth(dataset: FinanceResearchDataset) -> tuple[MetricPoint[Decimal], 
     return tuple(output)
 
 
+def thin_side_depth(
+    dataset: FinanceResearchDataset,
+) -> tuple[MetricPoint[Decimal], ...]:
+    """Return the smaller displayed depth across bid and ask sides."""
+
+    dataset = _dataset(dataset)
+    output: list[MetricPoint[Decimal]] = []
+    for row in sorted(dataset.market_states, key=lambda item: item.period):
+        bid = _non_negative(row.bid_depth, label="bid depth")
+        ask = _non_negative(row.ask_depth, label="ask depth")
+        output.append(MetricPoint(row.period, min(bid, ask)))
+    return tuple(output)
+
+
+def depth_asymmetry(
+    dataset: FinanceResearchDataset,
+) -> tuple[MetricPoint[Decimal], ...]:
+    """Return ``abs(bid_depth-ask_depth)/(bid_depth+ask_depth)``."""
+
+    dataset = _dataset(dataset)
+    output: list[MetricPoint[Decimal]] = []
+    for row in sorted(dataset.market_states, key=lambda item: item.period):
+        bid = _non_negative(row.bid_depth, label="bid depth")
+        ask = _non_negative(row.ask_depth, label="ask depth")
+        denominator = bid + ask
+        output.append(
+            MetricPoint(
+                row.period,
+                None if denominator == _ZERO else abs(bid - ask) / denominator,
+            )
+        )
+    return tuple(output)
+
+
 def fundamental_deviation(
     dataset: FinanceResearchDataset,
     *,

@@ -12,6 +12,7 @@ from abmforge_finance.metrics.market import (
     market_prices,
     relative_fundamental_deviation,
     simple_returns,
+    thin_side_depth,
     total_depth,
 )
 from abmforge_finance.metrics.types import MarketPriceBasis, MetricPoint
@@ -147,6 +148,21 @@ def depth_depletion(
     return tuple(
         MetricPoint(point.period, _ONE - point.value / reference)
         for point in total_depth(dataset)
+        if point.value is not None
+    )
+
+
+def thin_side_depletion(
+    dataset: FinanceResearchDataset,
+    *,
+    reference_side_depth: Decimal,
+) -> tuple[MetricPoint[Decimal], ...]:
+    """Return ``1 - min(bid_depth, ask_depth) / reference_side_depth``."""
+
+    reference = _positive(reference_side_depth, label="reference side depth")
+    return tuple(
+        MetricPoint(point.period, _ONE - point.value / reference)
+        for point in thin_side_depth(dataset)
         if point.value is not None
     )
 

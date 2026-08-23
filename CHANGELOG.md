@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the `LimitOrderBook` class example docstring.
 
 ### Added
+- Prespecified confirmatory inference with two-sided paired Student-t p-values and Holm FWER control.
+- Immutable precision-artifact verification and fresh confirmatory seed provenance.
+- Role-aware canonical confirmatory artifact separating primary significance from non-primary estimation.
+- ADR-027 documenting confirmatory inference and Holm reporting semantics.
 - Auditable independent flagship precision-pilot runner with bundled-protocol verification.
 - Canonical precision-only pilot artifact excluding treatment effect estimates and significance signals.
 - Exact scenario/seed provenance checks and smallest-prespecified-n decision verification.

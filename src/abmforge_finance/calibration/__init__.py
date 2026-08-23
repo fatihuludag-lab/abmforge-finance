@@ -15,7 +15,9 @@ from abmforge_finance.calibration.inference import (
     ContrastRegionSummary,
     PairedTreatmentContrast,
     paired_treatment_contrast,
+    paired_treatment_two_sided_p_value,
     student_t_critical_value,
+    student_t_two_sided_p_value,
     summarize_contrast_region,
 )
 from abmforge_finance.calibration.narrative_stability import (
@@ -84,6 +86,7 @@ __all__ = [
     "evaluate_narrative_stability_run",
     "infer_narrative_stability_sweep",
     "paired_treatment_contrast",
+    "paired_treatment_two_sided_p_value",
     "run_and_summarize_calibration",
     "run_calibration_replicates",
     "run_constant_fundamental_benchmark",
@@ -95,6 +98,7 @@ __all__ = [
     "run_passive_depth_sweep",
     "run_quote_width_sweep",
     "student_t_critical_value",
+    "student_t_two_sided_p_value",
     "summarize_calibration_runs",
     "summarize_contrast_region",
     "validate_seed_tuple",

@@ -58,7 +58,7 @@ ABMForge = "https://github.com/fatihuludag-lab/abmforge"
 where = ["src"]
 
 [tool.setuptools.package-data]
-abmforge_finance = ["py.typed"]
+abmforge_finance = ["py.typed", "study/specs/*.json"]
 
 [tool.ruff]
 line-length = 100

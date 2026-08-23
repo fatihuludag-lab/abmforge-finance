@@ -1,0 +1,172 @@
+{
+  "baseline_config": {
+    "decision_threshold": "0",
+    "direction_schedule": [
+      "bullish",
+      "bearish",
+      "bullish",
+      "bearish"
+    ],
+    "fundamental_value": "100",
+    "lot_size": "1",
+    "narrative_agent_count": 8,
+    "narrative_confidence": "1",
+    "narrative_exposure_weight": "1",
+    "narrative_quantity": "1",
+    "narrative_strength": "1",
+    "noise_activity_bps": 5000,
+    "noise_quantity": "1",
+    "noise_trader_count": 4,
+    "passive_levels": 5,
+    "passive_quantity_per_level": "4",
+    "scenario_id": "narrative-stability",
+    "tick_size": "1"
+  },
+  "benchmark_family": "narrative-stability-v1",
+  "multiplicity": {
+    "familywise_alpha": "0.05",
+    "method": "holm",
+    "primary_hypothesis_count": 8,
+    "scope": "all-primary-metric-treatment-contrasts"
+  },
+  "outcomes": [
+    {
+      "metric_name": "mean_thin_side_depletion",
+      "role": "primary"
+    },
+    {
+      "metric_name": "mean_absolute_relative_dislocation",
+      "role": "primary"
+    },
+    {
+      "metric_name": "mean_depth_asymmetry",
+      "role": "secondary"
+    },
+    {
+      "metric_name": "mid_realized_volatility",
+      "role": "secondary"
+    },
+    {
+      "metric_name": "maximum_drawdown",
+      "role": "secondary"
+    },
+    {
+      "metric_name": "mean_decision_concentration",
+      "role": "mechanism"
+    },
+    {
+      "metric_name": "mean_accepted_order_concentration",
+      "role": "mechanism"
+    },
+    {
+      "metric_name": "mean_executed_flow_concentration",
+      "role": "mechanism"
+    },
+    {
+      "metric_name": "mean_total_depth_depletion",
+      "role": "diagnostic"
+    },
+    {
+      "metric_name": "mean_relative_spread",
+      "role": "diagnostic"
+    },
+    {
+      "metric_name": "mean_spread_amplification",
+      "role": "diagnostic"
+    },
+    {
+      "metric_name": "treatment_rejected_order_count",
+      "role": "diagnostic"
+    },
+    {
+      "metric_name": "treatment_executed_volume",
+      "role": "diagnostic"
+    },
+    {
+      "metric_name": "market_trade_volume",
+      "role": "diagnostic"
+    }
+  ],
+  "precision_pilot": {
+    "candidate_seed_counts": [
+      10,
+      20,
+      40,
+      80,
+      160
+    ],
+    "confidence_level": "0.95",
+    "failure_rule": "no-confirmatory-run-if-no-candidate-meets-targets",
+    "selection_rule": "smallest-candidate-meeting-all-primary-max-half-width-targets",
+    "targets": [
+      {
+        "max_ci_half_width": "0.02",
+        "metric_name": "mean_thin_side_depletion"
+      },
+      {
+        "max_ci_half_width": "0.0025",
+        "metric_name": "mean_absolute_relative_dislocation"
+      }
+    ]
+  },
+  "protocol_id": "flagship-narrative-stability-v1",
+  "protocol_status": "precision-pilot-prespecified",
+  "protocol_version": "1.0.0",
+  "robustness_regimes": [
+    {
+      "parameter_name": "passive_quantity_per_level",
+      "parameter_value": "3",
+      "regime_id": "liquidity-low"
+    },
+    {
+      "parameter_name": "passive_quantity_per_level",
+      "parameter_value": "6",
+      "regime_id": "liquidity-high"
+    },
+    {
+      "parameter_name": "noise_activity_bps",
+      "parameter_value": "2500",
+      "regime_id": "noise-activity-low"
+    },
+    {
+      "parameter_name": "noise_activity_bps",
+      "parameter_value": "7500",
+      "regime_id": "noise-activity-high"
+    },
+    {
+      "parameter_name": "noise_trader_count",
+      "parameter_value": "2",
+      "regime_id": "noise-population-low"
+    },
+    {
+      "parameter_name": "noise_trader_count",
+      "parameter_value": "6",
+      "regime_id": "noise-population-high"
+    },
+    {
+      "parameter_name": "direction_schedule",
+      "parameter_value": "bullish,bullish,bearish,bearish",
+      "regime_id": "schedule-clustered"
+    },
+    {
+      "parameter_name": "direction_schedule",
+      "parameter_value": "bearish,bullish,bearish,bullish",
+      "regime_id": "polarity-reversed"
+    }
+  ],
+  "seed_design": {
+    "confirmatory_namespace": "confirmatory",
+    "pilot_namespace": "precision-pilot",
+    "reuse_pilot_in_confirmatory": false
+  },
+  "treatment": {
+    "control_homogeneity": "0",
+    "homogeneities": [
+      "0",
+      "0.25",
+      "0.5",
+      "0.75",
+      "1"
+    ]
+  }
+}

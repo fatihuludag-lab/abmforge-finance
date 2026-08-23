@@ -1446,6 +1446,158 @@ The next scientific step after Phase 10D is merged is an auditable independent
 precision-pilot run. Confirmatory simulations should not be launched before that
 pilot produces a valid prespecified seed-count decision.
 
+
+## Auditable flagship precision-pilot execution
+
+Phase 10E operationalizes the prespecified Phase 10D replicate-count decision without
+turning the precision pilot into an early look at confirmatory effect results.
+
+The official runner:
+
+```text
+frozen runtime protocol
+        |
+        v
+bundled JSON identity verification
+        |
+        v
+protocol-derived pilot seed tuple
+        |
+        v
+full H treatment grid
+        |
+        v
+paired 95% CI widths
+        |
+        v
+smallest prespecified n meeting every primary precision target
+        |
+        v
+canonical precision-only artifact
+```
+
+The full protocol uses five homogeneity treatments and 160 pilot seeds, so the official
+pilot executes:
+
+```text
+5 treatments x 160 seeds = 800 simulation replicates
+```
+
+### Precision-only disclosure boundary
+
+The pilot artifact contains only information required for the replicate-count decision:
+
+```text
+artifact schema version
+protocol ID / version / fingerprint
+source Git commit
+pilot seed namespace / count / fingerprint
+candidate seed counts
+
+for each candidate n:
+    primary metric name
+    target CI half-width
+    treatment-specific CI half-widths
+    maximum CI half-width
+    criterion status
+
+selected_seed_count
+confirmatory_eligible
+```
+
+It deliberately does **not** serialize:
+
+```text
+mean treatment effects
+effect signs
+p-values
+confidence-interval endpoints
+whether an interval excludes zero
+```
+
+The artifact records:
+
+```text
+decision_basis = ci-half-width-only
+effect_estimates_included = false
+```
+
+This does not make the internal Student-t calculations disappear; paired effects are
+still required mathematically to obtain confidence intervals. The boundary prevents
+those effect-direction results from becoming part of the official precision-pilot
+output used to choose the confirmatory replicate count.
+
+### Exact provenance verification
+
+Before an artifact can be constructed, every pilot experiment must match:
+
+```text
+the prespecified H ordering
+the exact benchmark scenario
+all non-H controls
+the full active horizon
+the full ordered pilot seed tuple
+```
+
+Any scenario or seed mismatch causes artifact construction to fail.
+
+The precision artifact is also self-checked against the protocol. Verification rejects
+tampering with protocol identity, seed provenance, candidate counts, primary metric
+order, treatment contrast order, precision targets, maximum widths, criterion flags,
+or the smallest-qualifying-n decision.
+
+### Canonical artifact serialization
+
+Precision artifacts use canonical JSON:
+
+```text
+sorted keys
+compact separators
+UTF-8
+one trailing newline
+no wall-clock timestamp
+```
+
+CI half-width floats are emitted as deterministic 17-significant-digit strings.
+
+The caller must provide the exact source Git commit. The writer refuses to overwrite an
+existing artifact and returns SHA-256 for the exact canonical bytes.
+
+Example after Phase 10E has been merged to a CI-green `main`:
+
+```python
+from abmforge_finance.study import (
+    run_flagship_precision_pilot,
+    write_precision_pilot_artifact,
+)
+
+artifact = run_flagship_precision_pilot(
+    source_git_commit="<CI-GREEN-MERGED-MAIN-SHA>",
+)
+
+digest = write_precision_pilot_artifact(
+    artifact,
+    "artifacts/flagship/precision-pilot.json",
+)
+```
+
+The result is only one of two decisions:
+
+```text
+selected_seed_count = 10 / 20 / 40 / 80 / 160
+confirmatory_eligible = true
+```
+
+or:
+
+```text
+selected_seed_count = null
+confirmatory_eligible = false
+```
+
+A successful precision decision authorizes the next confirmatory stage; it does not
+constitute evidence for a substantive narrative-homogeneity market effect.
+
 ## Installation
 
 The current package is intended for development use.
@@ -1512,6 +1664,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-023: Narrative synchronization and downstream market-stability outcomes](docs/adr/ADR-023-narrative-synchronization-and-market-stability-outcomes.md)
 - [ADR-024: Multi-seed narrative-stability benchmark and paired inference](docs/adr/ADR-024-multi-seed-narrative-stability-benchmark-and-paired-inference.md)
 - [ADR-025: Prespecified flagship narrative-stability study protocol](docs/adr/ADR-025-prespecified-flagship-narrative-stability-study-protocol.md)
+- [ADR-026: Independent precision-pilot execution and canonical result artifact](docs/adr/ADR-026-independent-precision-pilot-execution-and-canonical-artifact.md)
 
 ## Development workflow
 
@@ -1543,6 +1696,7 @@ feat/narrative-homogeneity
 feat/narrative-market-stability
 feat/narrative-stability-inference
 feat/flagship-study-protocol
+feat/flagship-precision-pilot
 ```
 
 ## License

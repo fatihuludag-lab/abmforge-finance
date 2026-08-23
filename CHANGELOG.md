@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the `LimitOrderBook` class example docstring.
 
 ### Added
+- Fingerprinted machine-readable flagship narrative-stability protocol.
+- Prespecified outcome hierarchy, Holm primary family, and precision seed-count design.
+- Independent pilot/confirmatory seed namespaces and one-factor robustness regimes.
+- ADR-025 documenting confirmatory study prespecification boundaries.
 - Multi-seed narrative-stability benchmark with common-random-number noise flow.
 - NarrativeStabilityRunResult extending calibration metrics with Phase 10C.1 outcomes.
 - Homogeneity sweeps that freeze all non-H scenario parameters and ordered seed tuples.

@@ -1275,6 +1275,177 @@ choose a primary endpoint. Primary/secondary outcomes, seed counts, robustness
 regimes, and any multiplicity procedure should be prespecified before the
 flagship simulation study is interpreted.
 
+
+## Prespecified flagship narrative-stability study
+
+Phase 10D freezes the flagship confirmatory study design before confirmatory
+simulation results are run or interpreted. The study contract is represented both
+as immutable Python objects and as a bundled machine-readable JSON snapshot.
+
+Protocol:
+
+```text
+protocol_id      = flagship-narrative-stability-v1
+protocol_version = 1.0.0
+status           = precision-pilot-prespecified
+fingerprint      = 483fbae4791b5f30b88bb036a994db411ce16f39a4fbd12a580679975a28c54b
+```
+
+The canonical SHA-256 fingerprint is derived from the complete study mapping rather
+than from a filename or wall-clock timestamp. Runtime construction and the bundled
+JSON snapshot are tested to resolve to the same mapping and fingerprint.
+
+### Confirmatory treatment grid
+
+```text
+H = 0.00
+H = 0.25
+H = 0.50
+H = 0.75
+H = 1.00
+```
+
+`H=0` is the prespecified control.
+
+### Outcome hierarchy
+
+Primary:
+
+```text
+mean_thin_side_depletion
+mean_absolute_relative_dislocation
+```
+
+Secondary:
+
+```text
+mean_depth_asymmetry
+mid_realized_volatility
+maximum_drawdown
+```
+
+Mechanism:
+
+```text
+mean_decision_concentration
+mean_accepted_order_concentration
+mean_executed_flow_concentration
+```
+
+Diagnostic:
+
+```text
+mean_total_depth_depletion
+mean_relative_spread
+mean_spread_amplification
+treatment_rejected_order_count
+treatment_executed_volume
+market_trade_volume
+```
+
+Secondary, mechanism, and diagnostic outcomes do not become primary because they
+produce favorable results.
+
+### Primary multiplicity family
+
+The primary family contains two primary metrics crossed with four non-control
+treatment contrasts:
+
+```text
+2 metrics x 4 contrasts = 8 primary hypotheses
+```
+
+Holm family-wise error control at alpha `0.05` is prespecified. Phase 10D freezes
+that decision but deliberately does not duplicate the existing paired Student-t
+engine or prematurely implement confirmatory reporting. A subsequent reporting
+layer must implement and test the Holm-adjusted decision table before confirmatory
+claims are produced.
+
+### Precision-based seed-count selection
+
+Confirmatory replicate count is selected from an independent precision pilot:
+
+```text
+n = 10
+n = 20
+n = 40
+n = 80
+n = 160
+```
+
+For every candidate nested prefix, all four treatment-vs-control contrasts must
+meet both 95% confidence-interval half-width targets:
+
+```text
+mean_thin_side_depletion:
+    maximum half-width <= 0.02
+
+mean_absolute_relative_dislocation:
+    maximum half-width <= 0.0025
+```
+
+The selected confirmatory seed count is the smallest candidate meeting every
+primary precision criterion. Selection is based on interval width only, never
+effect sign, statistical significance, or whether a result is favorable.
+
+If no candidate through `n=160` meets the precision targets, the confirmatory run
+does not begin without an explicit protocol amendment.
+
+### Independent pilot and confirmatory seeds
+
+Pilot and confirmatory seeds are derived deterministically from separate namespaces:
+
+```text
+precision-pilot
+confirmatory
+```
+
+and the protocol fingerprint. Pilot seeds are not reused in confirmatory effect
+estimation.
+
+```python
+from abmforge_finance.study import (
+    confirmatory_seed_tuple,
+    flagship_narrative_stability_protocol,
+    precision_pilot_seed_tuple,
+)
+
+protocol = flagship_narrative_stability_protocol()
+pilot_seeds = precision_pilot_seed_tuple(protocol)
+
+# Only after the precision pilot selects a prespecified candidate count:
+confirmatory_seeds = confirmatory_seed_tuple(protocol, 40)
+```
+
+### Prespecified robustness regimes
+
+Robustness analyses remain separate from the primary regime and are
+one-factor-at-a-time deviations:
+
+```text
+liquidity-low
+liquidity-high
+noise-activity-low
+noise-activity-high
+noise-population-low
+noise-population-high
+schedule-clustered
+polarity-reversed
+```
+
+They cannot replace the baseline primary regime merely because their results are
+stronger.
+
+The bundled machine-readable specification is:
+
+```text
+src/abmforge_finance/study/specs/flagship_narrative_stability_v1.json
+```
+
+The next scientific step after Phase 10D is merged is an auditable independent
+precision-pilot run. Confirmatory simulations should not be launched before that
+pilot produces a valid prespecified seed-count decision.
+
 ## Installation
 
 The current package is intended for development use.
@@ -1340,6 +1511,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-022: Population narrative homogeneity treatment semantics](docs/adr/ADR-022-population-narrative-homogeneity-treatment-semantics.md)
 - [ADR-023: Narrative synchronization and downstream market-stability outcomes](docs/adr/ADR-023-narrative-synchronization-and-market-stability-outcomes.md)
 - [ADR-024: Multi-seed narrative-stability benchmark and paired inference](docs/adr/ADR-024-multi-seed-narrative-stability-benchmark-and-paired-inference.md)
+- [ADR-025: Prespecified flagship narrative-stability study protocol](docs/adr/ADR-025-prespecified-flagship-narrative-stability-study-protocol.md)
 
 ## Development workflow
 
@@ -1370,6 +1542,7 @@ feat/narrative-signal-layer
 feat/narrative-homogeneity
 feat/narrative-market-stability
 feat/narrative-stability-inference
+feat/flagship-study-protocol
 ```
 
 ## License

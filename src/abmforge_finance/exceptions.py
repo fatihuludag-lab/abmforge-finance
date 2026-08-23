@@ -178,6 +178,10 @@ class InvalidNarrativeStabilityError(FinanceError):
     """Raised when a narrative market-stability evaluation violates its contract."""
 
 
+class StudyProtocolError(FinanceError):
+    """Raised when a prespecified research-study contract is violated."""
+
+
 class InvalidObservationError(DomainValidationError):
     """Raised when a policy-facing market observation violates its value contract."""
 

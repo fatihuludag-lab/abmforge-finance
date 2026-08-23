@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the `LimitOrderBook` class example docstring.
 
 ### Added
+- Auditable independent flagship precision-pilot runner with bundled-protocol verification.
+- Canonical precision-only pilot artifact excluding treatment effect estimates and significance signals.
+- Exact scenario/seed provenance checks and smallest-prespecified-n decision verification.
+- ADR-026 documenting precision-pilot execution and artifact semantics.
 - Fingerprinted machine-readable flagship narrative-stability protocol.
 - Prespecified outcome hierarchy, Holm primary family, and precision seed-count design.
 - Independent pilot/confirmatory seed namespaces and one-factor robustness regimes.

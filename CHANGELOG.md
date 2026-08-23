@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the `LimitOrderBook` class example docstring.
 
 ### Added
+- Directional liquidity-stress metrics for thin-side depth, thin-side depletion, and depth asymmetry.
+- Deterministic focal-direction schedules held fixed across narrative-homogeneity treatments.
+- Active-window narrative market-stability outcome evaluation separating mediators from downstream outcomes.
+- Controlled ladder-book validation showing constant total depth consumption can coexist with rising thin-side stress.
+- ADR-023 documenting narrative synchronization and downstream market-stability semantics.
 - Exact population narrative-homogeneity treatments with H = abs(N_focal - N_opposing) / N.
 - Deterministic nested focal-agent assignment with no participation-rate confound.
 - Treatment-population decision and accepted-order concentration measurements.

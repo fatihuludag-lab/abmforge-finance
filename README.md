@@ -1026,6 +1026,126 @@ spreads, liquidity depletion, volatility, dislocation, crashes, or tail risk. Th
 market-stability effects belong to the subsequent synchronized-order-flow experiment
 layer.
 
+
+## Narrative synchronization and market-stability outcomes
+
+Phase 10C.1 extends assigned population narrative homogeneity into downstream
+liquidity and market-stability measurement while keeping treatment, mediator, and
+outcome semantics separate.
+
+The causal ordering is:
+
+```text
+assigned homogeneity
+        |
+        v
+decision synchronization
+        |
+        v
+accepted/executed order-flow synchronization
+        |
+        v
+directional liquidity stress
+        |
+        v
+continuous market-stability outcomes
+```
+
+The software treats only the treatment assignment and accounting mechanics as hard
+properties. Statements such as "higher narrative homogeneity increases volatility"
+remain experimental claims and are not encoded as invariants.
+
+### Directional liquidity stress
+
+Total displayed depth can miss one-sided depletion when total aggressive volume is
+held fixed. Phase 10C.1 therefore adds:
+
+```text
+thin_side_depth = min(bid_depth, ask_depth)
+
+depth_asymmetry =
+    abs(bid_depth - ask_depth)
+    / (bid_depth + ask_depth)
+
+thin_side_depletion =
+    1 - thin_side_depth / reference_side_depth
+```
+
+`depth_asymmetry` is undefined when both displayed sides are zero.
+`reference_side_depth` is explicit and strictly positive.
+
+This distinction matters because two treatments may consume exactly the same total
+depth while very different amounts of liquidity remain on the thinner side.
+
+### Deterministic direction schedule
+
+`NarrativeDirectionSchedule` defines an exogenous focal-direction path that is held
+fixed across homogeneity treatments. For example:
+
+```python
+from abmforge_finance import NarrativeDirection, NarrativeDirectionSchedule
+
+schedule = NarrativeDirectionSchedule(
+    (
+        NarrativeDirection.BULLISH,
+        NarrativeDirection.BEARISH,
+        NarrativeDirection.BULLISH,
+        NarrativeDirection.BEARISH,
+    )
+)
+```
+
+Focal agents follow the scheduled direction and opposing agents receive the opposite
+direction at every step. The schedule introduces no LLM sampling, social diffusion,
+or additional random-number stream.
+
+### Active-window market-stability outcome
+
+`evaluate_narrative_market_stability()` aggregates only the treatment-active window
+and reports:
+
+```text
+assigned_homogeneity
+
+mean_decision_concentration
+mean_accepted_order_concentration
+mean_executed_flow_concentration
+
+mean_total_depth
+mean_total_depth_depletion
+mean_thin_side_depth
+mean_thin_side_depletion
+mean_depth_asymmetry
+
+mean_relative_spread
+mean_spread_amplification
+
+mid_realized_volatility
+maximum_drawdown
+mean_absolute_relative_dislocation
+
+treatment_rejected_order_count
+treatment_executed_volume
+market_trade_volume
+```
+
+Treatment-specific synchronization measures filter out passive liquidity providers
+and other non-treatment agents.
+
+`evaluate_narrative_market_stability_sweep()` additionally checks that a declared
+homogeneity sweep keeps agent identities, focal-direction convention, narrative
+strength, confidence, exposure weight, and active window fixed. Treatments may differ
+only in homogeneity and treatment identifier.
+
+The controlled ladder-book validation intentionally demonstrates a case where total
+depth consumption is unchanged while thin-side depletion, depth asymmetry, price
+dislocation, and midpoint volatility differ with synchronization. This is a mechanism
+validation for the controlled fixture, not an empirical law.
+
+Phase 10C.1 does not choose crash thresholds or tail-event cutoffs and does not yet run
+formal multi-seed inference. Multi-seed narrative-stability execution and paired
+treatment contrasts are a separate subsequent layer.
+
 ## Installation
 
 The current package is intended for development use.
@@ -1089,6 +1209,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-020: Robustness, sensitivity, and baseline ecology audit semantics](docs/adr/ADR-020-robustness-sensitivity-and-baseline-ecology-audit-semantics.md)
 - [ADR-021: Deterministic narrative signal and policy boundary](docs/adr/ADR-021-deterministic-narrative-signal-and-policy-boundary.md)
 - [ADR-022: Population narrative homogeneity treatment semantics](docs/adr/ADR-022-population-narrative-homogeneity-treatment-semantics.md)
+- [ADR-023: Narrative synchronization and downstream market-stability outcomes](docs/adr/ADR-023-narrative-synchronization-and-market-stability-outcomes.md)
 
 ## Development workflow
 
@@ -1117,6 +1238,7 @@ feat/calibration-inference
 feat/calibration-robustness
 feat/narrative-signal-layer
 feat/narrative-homogeneity
+feat/narrative-market-stability
 ```
 
 ## License

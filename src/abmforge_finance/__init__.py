@@ -55,6 +55,7 @@ from abmforge_finance.exceptions import (
     InvalidInstrumentError,
     InvalidMarketTimeError,
     InvalidNarrativeError,
+    InvalidNarrativeStabilityError,
     InvalidNarrativeTreatmentError,
     InvalidObservationError,
     InvalidOrderError,
@@ -80,9 +81,13 @@ from abmforge_finance.exceptions import (
 )
 from abmforge_finance.experiments import (
     NarrativeAgentAssignment,
+    NarrativeDirectionSchedule,
     NarrativeHomogeneityMeasurement,
     NarrativeHomogeneityTreatment,
+    NarrativeMarketStabilityOutcome,
     build_narrative_homogeneity_sweep,
+    evaluate_narrative_market_stability,
+    evaluate_narrative_market_stability_sweep,
     measure_narrative_homogeneity,
 )
 from abmforge_finance.market import (
@@ -162,6 +167,7 @@ __all__ = [
     "InvalidInstrumentError",
     "InvalidMarketTimeError",
     "InvalidNarrativeError",
+    "InvalidNarrativeStabilityError",
     "InvalidNarrativeTreatmentError",
     "InvalidObservationError",
     "InvalidOrderError",
@@ -182,9 +188,11 @@ __all__ = [
     "MatchingEngineError",
     "NarrativeAgentAssignment",
     "NarrativeDirection",
+    "NarrativeDirectionSchedule",
     "NarrativeExposure",
     "NarrativeHomogeneityMeasurement",
     "NarrativeHomogeneityTreatment",
+    "NarrativeMarketStabilityOutcome",
     "NarrativePolicy",
     "NarrativeSignal",
     "NarrativeState",
@@ -217,5 +225,7 @@ __all__ = [
     "__version__",
     "aggregate_narrative_signal",
     "build_narrative_homogeneity_sweep",
+    "evaluate_narrative_market_stability",
+    "evaluate_narrative_market_stability_sweep",
     "measure_narrative_homogeneity",
 ]

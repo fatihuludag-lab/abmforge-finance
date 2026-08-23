@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the `LimitOrderBook` class example docstring.
 
 ### Added
+- Multi-seed narrative-stability benchmark with common-random-number noise flow.
+- NarrativeStabilityRunResult extending calibration metrics with Phase 10C.1 outcomes.
+- Homogeneity sweeps that freeze all non-H scenario parameters and ordered seed tuples.
+- Paired narrative-stability inference reusing the Phase 9C.3 Student-t contrast engine.
+- ADR-024 documenting stochastic benchmark, CRN, paired inference, and multiplicity boundaries.
 - Directional liquidity-stress metrics for thin-side depth, thin-side depletion, and depth asymmetry.
 - Deterministic focal-direction schedules held fixed across narrative-homogeneity treatments.
 - Active-window narrative market-stability outcome evaluation separating mediators from downstream outcomes.

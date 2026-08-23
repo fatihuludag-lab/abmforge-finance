@@ -31,7 +31,7 @@ def test_only_benchmark_fixtures_depend_on_finance_adapter() -> None:
     root = Path("src/abmforge_finance/calibration")
     violations: list[str] = []
     for path in sorted(root.glob("*.py")):
-        if path.name in {"baseline.py", "tracking.py"}:
+        if path.name in {"baseline.py", "narrative_stability.py", "tracking.py"}:
             continue
         for module in _imports(path):
             if module == "abmforge_finance.adapters" or module.startswith(

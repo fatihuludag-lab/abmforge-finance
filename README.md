@@ -1146,6 +1146,135 @@ Phase 10C.1 does not choose crash thresholds or tail-event cutoffs and does not 
 formal multi-seed inference. Multi-seed narrative-stability execution and paired
 treatment contrasts are a separate subsequent layer.
 
+
+## Multi-seed narrative-stability inference
+
+Phase 10C.2 turns the deterministic Phase 10C.1 outcome contract into a
+replicated stochastic benchmark with common random numbers and paired treatment
+inference.
+
+The benchmark preserves the causal ordering:
+
+```text
+assigned homogeneity H
+        |
+        v
+deterministic narrative direction schedule
+        +
+seeded background noise flow
+        |
+        v
+Phase 10C.1 market-stability outcomes
+        |
+        v
+matched-seed treatment differences
+        |
+        v
+Student-t confidence intervals
+```
+
+The stochastic component is a stable population of `NoisePolicy` traders. The
+same ordered seed tuple, noise-agent IDs, and component seed names are reused
+across every homogeneity treatment. This creates a common-random-number design:
+for seed `s`, treatment `H` and the control are exposed to the same deterministic
+pseudo-random background flow.
+
+For an outcome `Y` and control homogeneity `H0`:
+
+```text
+Delta_s(H) = Y_s(H) - Y_s(H0)
+```
+
+The paired mean effect is:
+
+```text
+mean(Delta(H)) = sum_s Delta_s(H) / n
+```
+
+and confidence intervals are delegated to the existing Phase 9C.3
+`paired_treatment_contrast()` implementation rather than reimplementing
+Student-t inference.
+
+### Controlled benchmark configuration
+
+`NarrativeStabilityBenchmarkConfig` explicitly controls:
+
+```text
+direction schedule
+fundamental value
+tick and lot size
+passive-liquidity ladder
+narrative population size
+narrative order quantity
+narrative strength / confidence / exposure
+decision threshold
+noise population size
+noise order quantity
+noise activity rate
+scenario identity
+```
+
+The benchmark validates that passive capacity on each side strictly exceeds the
+worst-case same-side narrative plus noise demand for one period. This prevents
+the controlled fixture from mechanically exhausting one side of the book before
+the intended treatment comparison can be evaluated.
+
+A homogeneity sweep changes only the canonical `homogeneity` scenario parameter.
+All other scenario controls and the ordered seed tuple are frozen.
+
+```python
+from decimal import Decimal
+
+from abmforge_finance.calibration import (
+    NarrativeStabilityBenchmarkConfig,
+    infer_narrative_stability_sweep,
+    run_narrative_stability_homogeneity_sweep,
+)
+
+config = NarrativeStabilityBenchmarkConfig()
+
+experiments = run_narrative_stability_homogeneity_sweep(
+    config,
+    homogeneities=(
+        Decimal("0"),
+        Decimal("0.25"),
+        Decimal("0.5"),
+        Decimal("0.75"),
+        Decimal("1"),
+    ),
+    seeds=(101, 202, 303, 404),
+)
+
+inference = infer_narrative_stability_sweep(
+    experiments,
+    metric_names=(
+        "mean_thin_side_depletion",
+        "mid_realized_volatility",
+    ),
+)
+```
+
+`NarrativeStabilityRunResult` extends the existing `CalibrationRunResult`, so
+the established calibration summary and inference machinery can operate on the
+new benchmark without a second statistical engine.
+
+### Interpretation boundary
+
+The inference layer does not assert that increasing homogeneity must increase
+volatility, dislocation, drawdown, or liquidity stress. Those are empirical
+simulation hypotheses.
+
+A confidence interval that contains zero is compatible with insufficient
+evidence for a non-zero paired effect under the specified benchmark. An interval
+excluding zero identifies a direction for that metric under that design, but
+does not by itself establish external validity or a universal market law.
+
+The reported intervals are individual per-metric, per-treatment intervals.
+Phase 10C.2 does not claim family-wise multiplicity control and does not silently
+choose a primary endpoint. Primary/secondary outcomes, seed counts, robustness
+regimes, and any multiplicity procedure should be prespecified before the
+flagship simulation study is interpreted.
+
 ## Installation
 
 The current package is intended for development use.
@@ -1210,6 +1339,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-021: Deterministic narrative signal and policy boundary](docs/adr/ADR-021-deterministic-narrative-signal-and-policy-boundary.md)
 - [ADR-022: Population narrative homogeneity treatment semantics](docs/adr/ADR-022-population-narrative-homogeneity-treatment-semantics.md)
 - [ADR-023: Narrative synchronization and downstream market-stability outcomes](docs/adr/ADR-023-narrative-synchronization-and-market-stability-outcomes.md)
+- [ADR-024: Multi-seed narrative-stability benchmark and paired inference](docs/adr/ADR-024-multi-seed-narrative-stability-benchmark-and-paired-inference.md)
 
 ## Development workflow
 
@@ -1239,6 +1369,7 @@ feat/calibration-robustness
 feat/narrative-signal-layer
 feat/narrative-homogeneity
 feat/narrative-market-stability
+feat/narrative-stability-inference
 ```
 
 ## License

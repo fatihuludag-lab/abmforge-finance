@@ -924,6 +924,108 @@ diffusion, population-homogeneity treatments, adaptive susceptibility, or claims
 the deterministic policy is an empirical model of investor behavior. Those are
 separate treatment layers built on top of this mechanism.
 
+
+## Population narrative homogeneity treatment
+
+Phase 10B promotes the deterministic narrative mechanism from a single-agent policy
+to an explicit population treatment. Homogeneity is assigned before simulation and is
+kept separate from its realized behavioral mediator.
+
+For a binary directional narrative population of size `N`:
+
+```text
+H = abs(N_focal - N_opposing) / N
+N_focal >= N_opposing
+```
+
+so that:
+
+```text
+N_focal    = N * (1 + H) / 2
+N_opposing = N - N_focal
+```
+
+For eight treatment agents the exact grid is:
+
+```text
+H = 0.00  -> 4 focal / 4 opposing
+H = 0.25  -> 5 / 3
+H = 0.50  -> 6 / 2
+H = 0.75  -> 7 / 1
+H = 1.00  -> 8 / 0
+```
+
+Intermediate values are accepted only when the implied focal count is exactly an
+integer. The library never rounds an infeasible treatment to a nearby composition.
+
+```python
+from decimal import Decimal
+
+from abmforge_finance import (
+    NarrativeDirection,
+    build_narrative_homogeneity_sweep,
+)
+
+treatments = build_narrative_homogeneity_sweep(
+    tuple(f"narrative-{index:04d}" for index in range(8)),
+    homogeneities=(
+        Decimal("0"),
+        Decimal("0.25"),
+        Decimal("0.50"),
+        Decimal("0.75"),
+        Decimal("1"),
+    ),
+    focal_direction=NarrativeDirection.BULLISH,
+)
+```
+
+Every treatment agent remains directionally active. Focal agents receive the focal
+narrative and all remaining agents receive an equally strong, equally confident
+opposing narrative. This prevents narrative homogeneity from being confounded with
+directional participation rate.
+
+Agent IDs are canonicalized lexicographically and the focal group is the canonical
+prefix. Across an increasing homogeneity sweep, focal sets are therefore nested rather
+than randomly reassigned.
+
+Assigned treatment and realized synchronization are distinct quantities:
+
+```text
+assigned H
+    |
+    v
+population narrative allocation
+    |
+    v
+realized decision concentration
+    |
+    v
+realized accepted-order concentration
+```
+
+`measure_narrative_homogeneity()` computes realized concentration only within the
+assigned narrative-treatment population, excluding passive liquidity providers and
+other non-treatment agents.
+
+For directional decisions or accepted orders:
+
+```text
+C = abs(N_buy - N_sell) / (N_buy + N_sell)
+```
+
+HOLD decisions are excluded from the directional denominator; accepted-order
+concentration counts only accepted orders.
+
+Under the controlled Phase 10B mechanism fixture, with zero decision threshold,
+non-zero narrative signals, equal quantities, and sufficient two-sided liquidity,
+assigned `H` equals realized decision concentration and accepted-order concentration.
+That equality is a mechanism validation, not a universal market law.
+
+Phase 10B does **not** yet claim that higher narrative homogeneity causes wider
+spreads, liquidity depletion, volatility, dislocation, crashes, or tail risk. Those
+market-stability effects belong to the subsequent synchronized-order-flow experiment
+layer.
+
 ## Installation
 
 The current package is intended for development use.
@@ -986,6 +1088,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-019: Paired treatment contrasts and confidence intervals](docs/adr/ADR-019-paired-treatment-contrasts-and-confidence-intervals.md)
 - [ADR-020: Robustness, sensitivity, and baseline ecology audit semantics](docs/adr/ADR-020-robustness-sensitivity-and-baseline-ecology-audit-semantics.md)
 - [ADR-021: Deterministic narrative signal and policy boundary](docs/adr/ADR-021-deterministic-narrative-signal-and-policy-boundary.md)
+- [ADR-022: Population narrative homogeneity treatment semantics](docs/adr/ADR-022-population-narrative-homogeneity-treatment-semantics.md)
 
 ## Development workflow
 
@@ -1013,6 +1116,7 @@ feat/calibration-benchmarks
 feat/calibration-inference
 feat/calibration-robustness
 feat/narrative-signal-layer
+feat/narrative-homogeneity
 ```
 
 ## License

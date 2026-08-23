@@ -170,6 +170,10 @@ class InvalidNarrativeError(DomainValidationError):
     """Raised when narrative state, exposure, or signal values are invalid."""
 
 
+class InvalidNarrativeTreatmentError(FinanceError):
+    """Raised when a population narrative treatment is not exactly identified."""
+
+
 class InvalidObservationError(DomainValidationError):
     """Raised when a policy-facing market observation violates its value contract."""
 

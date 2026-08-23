@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the `LimitOrderBook` class example docstring.
 
 ### Added
+- Exact population narrative-homogeneity treatments with H = abs(N_focal - N_opposing) / N.
+- Deterministic nested focal-agent assignment with no participation-rate confound.
+- Treatment-population decision and accepted-order concentration measurements.
+- Controlled end-to-end validation that assigned H maps to realized synchronization under sufficient liquidity.
+- ADR-022 documenting assigned homogeneity versus realized mediator semantics.
 - Immutable narrative state, exposure, and exact aggregate signal domain primitives.
 - Deterministic NarrativePolicy mapping frozen narrative pressure to market buy/sell/hold decisions.
 - Half-open time-varying narrative streams with overlap and exposure-reference validation.

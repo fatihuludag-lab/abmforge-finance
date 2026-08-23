@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from itertools import pairwise
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import Enum
+from itertools import pairwise
 
 from abmforge_finance.domain._validation import (
     require_decimal,

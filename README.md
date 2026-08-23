@@ -772,6 +772,77 @@ Formal multiplicity control, bootstrap intervals, regression/meta-models, empiri
 parameter fitting, and stylized-fact acceptance criteria remain separate later
 analysis steps.
 
+
+## Robustness, sensitivity, and baseline ecology audit
+
+Phase 9C.4 closes the baseline-calibration layer by auditing whether paired treatment
+effects retain a stable direction across an explicit single-parameter region.
+
+```python
+from abmforge_finance.calibration import (
+    audit_parameter_sweep,
+    build_baseline_ecology_audit,
+)
+
+depth_audit = audit_parameter_sweep(
+    depth_experiments,
+    control_index=0,
+    family_name="passive-depth",
+    parameter_name="passive_quantity",
+    metric_name="mean_total_depth",
+)
+
+baseline_audit = build_baseline_ecology_audit(
+    (depth_audit, width_audit),
+    required_families=("passive-depth", "quote-width"),
+)
+```
+
+Treatment-family audits use the existing seed-paired treatment-minus-control contrast
+contract. They are deliberately limited to one changed canonical parameter at a time;
+multi-parameter changes are rejected rather than given a misleading sensitivity
+interpretation.
+
+Directional outcomes are classified as:
+
+```text
+ROBUST_POSITIVE
+ROBUST_NEGATIVE
+ROBUST_ZERO
+MIXED
+INSUFFICIENT
+```
+
+`ROBUST_*` means that the mean paired effect keeps the same direction across at least
+the configured minimum number of treatment points. It does **not** mean statistical
+significance, simultaneous confidence coverage, an economic law, or empirical
+realism. Individual confidence-interval exclusion counts remain separate.
+
+When normalization is mathematically valid, the audit also reports dimensionless
+sensitivity:
+
+```text
+S = ((Y_T - Y_C) / Y_C) / ((X_T - X_C) / X_C)
+```
+
+Sensitivity is left undefined rather than forced when the parameter is non-numeric,
+the control parameter is zero, the control metric mean is zero, or the canonical
+parameter strings differ without a numerical parameter change.
+
+`BaselineEcologyAudit` aggregates named treatment-family audits and records missing
+families, insufficient regions, mixed-direction findings, whether families share one
+replicate-seed tuple, individual interval-exclusion counts, and explicit warnings.
+
+A complete baseline ecology audit means only that requested treatment families are
+present and contain enough contrasts for their configured directional classification.
+It is **not** a certificate of empirical realism, external validity, calibration
+quality, or publication readiness.
+
+With Phases 9C.1-9C.4, the calibration layer now provides reproducible scenario
+contracts, benchmark treatment families, seed-paired uncertainty, directional
+robustness, normalized sensitivity where defined, and machine-readable baseline
+ecology audit results.
+
 ## Installation
 
 The current package is intended for development use.
@@ -832,6 +903,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-017: Baseline market ecology, replication, and calibration semantics](docs/adr/ADR-017-baseline-market-ecology-replication-and-calibration-semantics.md)
 - [ADR-018: Fundamental tracking and common-random-number benchmark sweeps](docs/adr/ADR-018-fundamental-tracking-and-common-random-number-benchmark-sweeps.md)
 - [ADR-019: Paired treatment contrasts and confidence intervals](docs/adr/ADR-019-paired-treatment-contrasts-and-confidence-intervals.md)
+- [ADR-020: Robustness, sensitivity, and baseline ecology audit semantics](docs/adr/ADR-020-robustness-sensitivity-and-baseline-ecology-audit-semantics.md)
 
 ## Development workflow
 
@@ -857,6 +929,7 @@ feat/dynamic-liquidity
 feat/baseline-market-ecology
 feat/calibration-benchmarks
 feat/calibration-inference
+feat/calibration-robustness
 ```
 
 ## License

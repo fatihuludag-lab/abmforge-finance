@@ -22,6 +22,14 @@ from abmforge_finance.calibration.result import (
     CalibrationRunResult,
     evaluate_calibration_dataset,
 )
+from abmforge_finance.calibration.robustness import (
+    BaselineEcologyAudit,
+    NormalizedSensitivity,
+    RobustnessClassification,
+    TreatmentFamilyAudit,
+    audit_parameter_sweep,
+    build_baseline_ecology_audit,
+)
 from abmforge_finance.calibration.runner import (
     DatasetFactory,
     run_and_summarize_calibration,
@@ -43,6 +51,7 @@ from abmforge_finance.calibration.tracking import (
 )
 
 __all__ = [
+    "BaselineEcologyAudit",
     "CalibrationExperimentResult",
     "CalibrationMetricSummary",
     "CalibrationRunResult",
@@ -53,7 +62,12 @@ __all__ = [
     "ContrastRegionSummary",
     "DatasetFactory",
     "FundamentalTrackingBenchmarkConfig",
+    "NormalizedSensitivity",
     "PairedTreatmentContrast",
+    "RobustnessClassification",
+    "TreatmentFamilyAudit",
+    "audit_parameter_sweep",
+    "build_baseline_ecology_audit",
     "evaluate_calibration_dataset",
     "paired_treatment_contrast",
     "run_and_summarize_calibration",

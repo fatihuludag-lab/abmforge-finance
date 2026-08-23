@@ -260,3 +260,7 @@ class CalibrationExecutionError(CalibrationError):
 
 class CalibrationInferenceError(CalibrationError):
     """Raised when paired calibration inference violates its statistical contract."""
+
+
+class CalibrationRobustnessError(CalibrationError):
+    """Raised when a calibration robustness audit violates its contract."""

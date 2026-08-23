@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the `LimitOrderBook` class example docstring.
 
 ### Added
+- Single-parameter treatment-family robustness audits over seed-paired contrasts.
+- Explicit directional robustness classifications separated from individual CI exclusion.
+- Dimensionless normalized sensitivity when control parameter and metric scales are valid.
+- Machine-readable baseline ecology audit aggregation without empirical-realism claims.
+- ADR-020 documenting robustness, sensitivity, and audit semantics.
 - Seed-paired treatment-minus-control contrasts preserving common-random-number experiment structure.
 - Dependency-free two-sided Student-t confidence intervals for paired differences.
 - Descriptive contrast-region summaries for effect-direction robustness diagnostics.

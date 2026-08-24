@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the `LimitOrderBook` class example docstring.
 
 ### Added
+- Prespecified Phase 11A stylized-fact external-validity protocol with a fingerprinted JSON snapshot.
+- Frozen 256-period burn-in, 4,096-period analysis horizon, 16-replicate long-horizon validation design, and independent deterministic seeds.
+- Seven locked simulation/empirical signatures with primary microstructure validation separated from diagnostic stylized facts.
+- ADR-029 documenting no-calibration, shared-estimator, and descriptive external-validity boundaries.
 - Prespecified eight-regime flagship robustness execution with a fresh shared CRN seed tuple.
 - Immutable confirmatory-artifact anchor for estimation-only robustness auditing.
 - Primary direction, dose-response, and confirmatory effect-ratio robustness summaries without a new significance family.

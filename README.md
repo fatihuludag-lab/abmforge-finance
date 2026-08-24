@@ -1783,6 +1783,60 @@ reverses without redefining statistical success after seeing the confirmatory re
 The official 400-simulation robustness study is intentionally deferred until the
 Phase 10G implementation has been merged and the post-merge `main` CI is green.
 
+
+## Prespecified stylized-fact external validation
+
+Phase 11A freezes an external-validity contract before any long-horizon validation
+result or empirical market comparison is observed. This layer is deliberately separate
+from the completed flagship confirmatory and robustness families and cannot redefine
+their hypotheses, multiplicity family, or conclusions.
+
+The machine-readable protocol is:
+
+```text
+stylized-fact-validation-v1
+```
+
+with fingerprint:
+
+```text
+a0906ab5529e78c8410448eb2e1bede78a3ab2f295d2500d5dc277a5dccf0b6b
+```
+
+The simulation design is fixed at 256 burn-in periods plus 4,096 analysis periods,
+16 deterministic independent replicates, midpoint log returns, and a maximum
+autocorrelation lag of 20. It inherits the fingerprinted flagship baseline ecology,
+uses the control narrative homogeneity value `H=0`, and repeats the frozen
+bullish/bearish direction cycle over the long horizon.
+
+Seven signatures are prespecified. SF-04 through SF-06 are the primary
+external-validity signatures because they directly probe the flagship microstructure
+mechanism:
+
+```text
+SF-04  aggressor-flow price impact
+SF-05  liquidity-conditioned price impact
+SF-06  liquidity fragility
+```
+
+Return autocorrelation, return-tail shape, volatility clustering, and aggressor-sign
+persistence are diagnostic rather than new confirmatory outcomes.
+
+The flow estimand is explicitly `aggressor-executed-flow-imbalance`; it is not generic
+limit-order-book OFI. The same estimator implementation must later be used for both
+simulation and empirical data.
+
+The empirical reference interval is prespecified as the 5th to 95th percentile of the
+empirical reference distribution. Later comparison results may be classified as
+`concordant`, `direction-only`, `discordant`, or `uninformative`.
+
+Phase 11A permits no model calibration against observed stylized-fact results and
+creates no new p-value or multiplicity family. Failures must be reported rather than
+repaired through post-hoc parameter tuning.
+
+The official long-horizon validation execution is intentionally deferred until the
+Phase 11A implementation is merged to a CI-green `main` commit.
+
 ## Installation
 
 The current package is intended for development use.
@@ -1852,6 +1906,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-026: Independent precision-pilot execution and canonical result artifact](docs/adr/ADR-026-independent-precision-pilot-execution-and-canonical-artifact.md)
 - [ADR-027: Prespecified confirmatory inference and Holm reporting](docs/adr/ADR-027-prespecified-confirmatory-inference-and-holm-reporting.md)
 - [ADR-028: Prespecified robustness execution and estimation-only audit](docs/adr/ADR-028-prespecified-robustness-execution-and-estimation-only-audit.md)
+- [ADR-029: Prespecified stylized-fact external-validity contract](docs/adr/ADR-029-prespecified-stylized-fact-external-validity-contract.md)
 
 ## Development workflow
 

@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the `LimitOrderBook` class example docstring.
 
 ### Added
+- Prespecified eight-regime flagship robustness execution with a fresh shared CRN seed tuple.
+- Immutable confirmatory-artifact anchor for estimation-only robustness auditing.
+- Primary direction, dose-response, and confirmatory effect-ratio robustness summaries without a new significance family.
+- ADR-028 documenting Phase 10G robustness semantics.
 - Prespecified confirmatory inference with two-sided paired Student-t p-values and Holm FWER control.
 - Immutable precision-artifact verification and fresh confirmatory seed provenance.
 - Role-aware canonical confirmatory artifact separating primary significance from non-primary estimation.

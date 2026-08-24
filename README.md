@@ -1689,6 +1689,100 @@ seed overlap is forbidden.
 The official 50-simulation confirmatory run is intentionally deferred until this Phase
 10F implementation has been merged and the post-merge `main` CI is green.
 
+
+## Prespecified flagship robustness audit
+
+Phase 10G implements the robustness execution contract already frozen by the flagship
+study protocol. It does not modify the protocol JSON or fingerprint and it does not
+introduce a second confirmatory significance search after the main results are known.
+
+The robustness design consumes the eight prespecified one-factor regimes:
+
+```text
+liquidity-low
+liquidity-high
+noise-activity-low
+noise-activity-high
+noise-population-low
+noise-population-high
+schedule-clustered
+polarity-reversed
+```
+
+Every regime is evaluated over the same homogeneity grid:
+
+```text
+H = 0, 0.25, 0.50, 0.75, 1.00
+```
+
+### Fresh shared robustness seeds
+
+The execution layer derives one deterministic seed tuple from the frozen study
+fingerprint under the fixed namespace:
+
+```text
+robustness-v1
+```
+
+The replicate count is inherited from the immutable confirmatory decision:
+
+```text
+selected_seed_count = 10
+```
+
+The same ten robustness seeds are shared across all eight regimes and all homogeneity
+levels, preserving a common-random-number design for regime comparisons. The
+robustness seed tuple must be disjoint from both the 160 precision-pilot seeds and the
+10 confirmatory seeds.
+
+The official robustness execution therefore contains:
+
+```text
+8 regimes x 5 homogeneity treatments x 10 seeds = 400 simulations
+```
+
+### Immutable confirmatory anchor
+
+Robustness execution is anchored to the official confirmatory artifact with SHA-256:
+
+```text
+9e78c74483ca20c16fdf3dca8f518957959ec66e3d810518a78e1cb5402831ed
+```
+
+The anchor loader verifies the exact artifact bytes, protocol identity, selected
+replicate count, confirmatory seed fingerprint, outcome roles, treatment order, and
+the primary confirmatory effect direction before robustness execution is allowed.
+
+### Estimation-only audit
+
+Phase 10G intentionally creates no new p-value family, Holm family, or post-hoc
+effect-size threshold.
+
+For each primary outcome and robustness regime, the audit records:
+
+```text
+paired treatment-minus-control effect
+standard error
+nominal 95% confidence interval
+confirmatory reference effect
+robustness / confirmatory effect ratio
+confirmatory-direction preservation
+non-decreasing dose-response in the confirmatory direction
+```
+
+These are descriptive robustness quantities rather than a new confirmatory hypothesis
+family.
+
+Secondary, mechanism, and diagnostic outcomes remain estimation-only and do not receive
+post-confirmatory significance flags.
+
+This design lets the study report where the confirmed mechanism remains directionally
+stable, where its magnitude changes, and where a dose-response pattern weakens or
+reverses without redefining statistical success after seeing the confirmatory results.
+
+The official 400-simulation robustness study is intentionally deferred until the
+Phase 10G implementation has been merged and the post-merge `main` CI is green.
+
 ## Installation
 
 The current package is intended for development use.
@@ -1757,6 +1851,7 @@ Architecture Decision Records are stored under [`docs/adr`](docs/adr).
 - [ADR-025: Prespecified flagship narrative-stability study protocol](docs/adr/ADR-025-prespecified-flagship-narrative-stability-study-protocol.md)
 - [ADR-026: Independent precision-pilot execution and canonical result artifact](docs/adr/ADR-026-independent-precision-pilot-execution-and-canonical-artifact.md)
 - [ADR-027: Prespecified confirmatory inference and Holm reporting](docs/adr/ADR-027-prespecified-confirmatory-inference-and-holm-reporting.md)
+- [ADR-028: Prespecified robustness execution and estimation-only audit](docs/adr/ADR-028-prespecified-robustness-execution-and-estimation-only-audit.md)
 
 ## Development workflow
 
@@ -1790,6 +1885,7 @@ feat/narrative-stability-inference
 feat/flagship-study-protocol
 feat/flagship-precision-pilot
 feat/confirmatory-holm-inference
+feat/flagship-robustness-audit
 ```
 
 ## License

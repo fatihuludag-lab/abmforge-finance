@@ -193,6 +193,19 @@ The empirical adapter measures captured displayed non-RPI liquidity from the
 synchronized local-book representation seeded by the 1000-level snapshot and
 maintained by subsequent depth updates.
 
+The synchronized local book is an event-driven state.
+
+If no diff-depth update occurs during an otherwise continuous and valid
+one-second interval, the most recently synchronized local-book state persists
+until a later absolute depth update changes it.
+
+Using that still-valid state at an interval close is state persistence, not
+forward filling of missing market data.
+
+State persistence is permitted only while the WebSocket session remains valid
+and update-id continuity has not failed. A sequence gap or reconnect
+invalidates the active candidate according to this ADR.
+
 For each valid one-second interval, the interval-closing synchronized local
 book supplies:
 

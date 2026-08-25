@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -47,6 +48,8 @@ class BinanceUsdMCaptureProcessorResult:
 
     records: tuple[BinanceUsdMRawRecord, ...]
     final_book_state: BinanceUsdMLocalBookState
+    book_states: tuple[BinanceUsdMLocalBookState, ...]
+    aggregate_trades: tuple[BinanceUsdMAggTradeEvent, ...]
     depth_update_count: int
     aggregate_trade_count: int
 
@@ -74,7 +77,9 @@ class BinanceUsdMCaptureProcessor:
 
     __slots__ = (
         "_aggregate_trade_count",
+        "_aggregate_trades",
         "_book",
+        "_book_states",
         "_contract",
         "_depth_buffer",
         "_depth_update_count",
@@ -93,6 +98,8 @@ class BinanceUsdMCaptureProcessor:
         self._depth_buffer: list[BinanceUsdMDepthUpdateEvent] = []
         self._snapshot: BinanceUsdMDepthSnapshot | None = None
         self._book: BinanceUsdMLocalBook | None = None
+        self._book_states: list[BinanceUsdMLocalBookState] = []
+        self._aggregate_trades: list[BinanceUsdMAggTradeEvent] = []
         self._depth_update_count = 0
         self._aggregate_trade_count = 0
         self._last_received_at_ns = -1
@@ -120,14 +127,14 @@ class BinanceUsdMCaptureProcessor:
         if received_at_ns < self._last_received_at_ns:
             raise BinanceUsdMCaptureError("raw receipt timestamps must be non-decreasing")
 
-        record = BinanceUsdMRawRecord(
-            sequence_number=len(self._records),
-            channel=channel,
-            received_at_ns=received_at_ns,
-            raw_json=raw_json,
+        self._records.append(
+            BinanceUsdMRawRecord(
+                sequence_number=len(self._records),
+                channel=channel,
+                received_at_ns=received_at_ns,
+                raw_json=raw_json,
+            )
         )
-
-        self._records.append(record)
         self._last_received_at_ns = received_at_ns
 
     def accept_depth_update(
@@ -145,8 +152,6 @@ class BinanceUsdMCaptureProcessor:
         )
 
         try:
-            import json
-
             value = json.loads(raw_json)
         except json.JSONDecodeError as exc:
             raise BinanceUsdMCaptureError("depth update contains invalid JSON") from exc
@@ -166,6 +171,8 @@ class BinanceUsdMCaptureProcessor:
                 self._book.apply(event)
             except BinanceUsdMBookSynchronizationError as exc:
                 raise BinanceUsdMCaptureError("depth update continuity failure") from exc
+
+            self._book_states.append(self._book.state())
             return
 
         self._depth_buffer.append(event)
@@ -186,8 +193,6 @@ class BinanceUsdMCaptureProcessor:
         )
 
         try:
-            import json
-
             value = json.loads(raw_json)
         except json.JSONDecodeError as exc:
             raise BinanceUsdMCaptureError("aggregate trade contains invalid JSON") from exc
@@ -195,11 +200,12 @@ class BinanceUsdMCaptureProcessor:
         if not isinstance(value, dict):
             raise BinanceUsdMCaptureError("aggregate trade must contain a JSON object")
 
-        BinanceUsdMAggTradeEvent.from_mapping(
+        event = BinanceUsdMAggTradeEvent.from_mapping(
             value,
             contract=self._contract,
         )
 
+        self._aggregate_trades.append(event)
         self._aggregate_trade_count += 1
 
     def accept_depth_snapshot(
@@ -216,7 +222,10 @@ class BinanceUsdMCaptureProcessor:
                 "candidate capture cannot contain more than one depth snapshot"
             )
 
-        if not isinstance(snapshot, BinanceUsdMDepthSnapshot):
+        if not isinstance(
+            snapshot,
+            BinanceUsdMDepthSnapshot,
+        ):
             raise TypeError("snapshot must be a BinanceUsdMDepthSnapshot")
 
         self._record(
@@ -250,11 +259,20 @@ class BinanceUsdMCaptureProcessor:
             return
 
         try:
+            # Synchronize with the bridge event first so every
+            # subsequent local-book state can be retained individually.
             self._book = BinanceUsdMLocalBook.synchronize(
                 self._snapshot,
-                tuple(self._depth_buffer),
+                (first,),
                 contract=self._contract,
             )
+
+            self._book_states.append(self._book.state())
+
+            for event in retained[1:]:
+                self._book.apply(event)
+                self._book_states.append(self._book.state())
+
         except BinanceUsdMBookSynchronizationError as exc:
             raise BinanceUsdMCaptureError("depth snapshot synchronization failed") from exc
 
@@ -272,11 +290,16 @@ class BinanceUsdMCaptureProcessor:
         if not self._records:
             raise BinanceUsdMCaptureError("capture contains no raw records")
 
+        if not self._book_states:
+            raise BinanceUsdMCaptureError("capture contains no synchronized book-state timeline")
+
         return BinanceUsdMCaptureProcessorResult(
             records=tuple(self._records),
             final_book_state=self._book.state(),
+            book_states=tuple(self._book_states),
+            aggregate_trades=tuple(self._aggregate_trades),
             depth_update_count=self._depth_update_count,
-            aggregate_trade_count=self._aggregate_trade_count,
+            aggregate_trade_count=(self._aggregate_trade_count),
         )
 
 
@@ -355,14 +378,13 @@ async def capture_binance_usdm_smoke(
 
     active_contract = binance_usdm_empirical_contract() if contract is None else contract
 
-    # Capture cannot begin until the live exchange identity matches
-    # the frozen source contract.
     await asyncio.to_thread(
         fetch_binance_usdm_exchange_info,
         contract=active_contract,
     )
 
     connect = load_websocket_connect()
+
     processor = BinanceUsdMCaptureProcessor(
         contract=active_contract,
     )
@@ -405,7 +427,10 @@ async def capture_binance_usdm_smoke(
                 )
 
                 try:
-                    snapshot_raw, snapshot = await asyncio.to_thread(
+                    (
+                        snapshot_raw,
+                        snapshot,
+                    ) = await asyncio.to_thread(
                         fetch_binance_usdm_depth_snapshot,
                         contract=active_contract,
                     )
@@ -440,7 +465,7 @@ async def capture_binance_usdm_smoke(
     provenance = BinanceUsdMCaptureProvenance(
         capture_id=capture_id,
         candidate_id=candidate_id,
-        repository_commit_sha=repository_commit_sha,
+        repository_commit_sha=(repository_commit_sha),
         started_at_ns=started_at_ns,
         ended_at_ns=ended_at_ns,
     )
@@ -455,30 +480,37 @@ async def capture_binance_usdm_smoke(
     snapshot_records = tuple(
         record
         for record in processed.records
-        if record.channel is BinanceUsdMRawChannel.DEPTH_SNAPSHOT
+        if (record.channel is BinanceUsdMRawChannel.DEPTH_SNAPSHOT)
     )
 
     if len(snapshot_records) != 1:
         raise BinanceUsdMCaptureError("successful capture must contain exactly one snapshot")
 
-    import json
-
     snapshot_value = json.loads(snapshot_records[0].raw_json)
 
-    if not isinstance(snapshot_value, dict) or not isinstance(
-        snapshot_value.get("lastUpdateId"),
-        int,
+    if (
+        not isinstance(snapshot_value, dict)
+        or isinstance(
+            snapshot_value.get("lastUpdateId"),
+            bool,
+        )
+        or not isinstance(
+            snapshot_value.get("lastUpdateId"),
+            int,
+        )
     ):
         raise BinanceUsdMCaptureError("captured depth snapshot has invalid lastUpdateId")
+
+    initial_snapshot_update_id = snapshot_value["lastUpdateId"]
 
     return BinanceUsdMSmokeCaptureResult(
         artifact_directory=artifact_directory,
         capture_id=capture_id,
         candidate_id=candidate_id,
         raw_record_count=len(processed.records),
-        depth_update_count=processed.depth_update_count,
-        aggregate_trade_count=processed.aggregate_trade_count,
-        initial_snapshot_update_id=(snapshot_value["lastUpdateId"]),
+        depth_update_count=(processed.depth_update_count),
+        aggregate_trade_count=(processed.aggregate_trade_count),
+        initial_snapshot_update_id=(initial_snapshot_update_id),
         final_book_update_id=(processed.final_book_state.last_update_id),
         final_best_bid=str(processed.final_book_state.best_bid),
         final_best_ask=str(processed.final_book_state.best_ask),

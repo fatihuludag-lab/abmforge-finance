@@ -313,17 +313,36 @@ def test_interval_timestamps_are_utc_aligned_nanoseconds() -> None:
     assert intervals[1].end_timestamp_ns == 12_000_000_000
 
 
-def test_each_interval_requires_synchronized_book_state() -> None:
+def test_synchronized_book_state_persists_across_quiet_interval() -> None:
+    intervals = aggregate_binance_usdm_intervals(
+        start_timestamp_ms=_START,
+        interval_count=2,
+        book_states=(
+            _state(
+                transaction_time_ms=_START + 500,
+                update_id=1,
+                bid="100",
+                ask="102",
+            ),
+        ),
+        aggregate_trades=(),
+    )
+
+    assert intervals[0].mid_price == pytest.approx(101.0)
+    assert intervals[1].mid_price == pytest.approx(101.0)
+
+
+def test_first_interval_requires_state_before_its_close() -> None:
     with pytest.raises(
         BinanceUsdMIntervalAggregationError,
-        match="no synchronized book state",
+        match="before interval close",
     ):
         aggregate_binance_usdm_intervals(
             start_timestamp_ms=_START,
             interval_count=2,
             book_states=(
                 _state(
-                    transaction_time_ms=_START + 500,
+                    transaction_time_ms=_START + 1_500,
                     update_id=1,
                 ),
             ),

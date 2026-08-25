@@ -201,13 +201,6 @@ def aggregate_binance_usdm_intervals(
         stop_timestamp_ms=stop,
     )
 
-    states_by_interval: list[list[BinanceUsdMLocalBookState]] = [[] for _ in range(count)]
-
-    for state in book_states:
-        index = (state.transaction_time_ms - start) // interval_ms
-
-        states_by_interval[index].append(state)
-
     buy_quantity = [_ZERO for _ in range(count)]
     sell_quantity = [_ZERO for _ in range(count)]
 
@@ -221,16 +214,24 @@ def aggregate_binance_usdm_intervals(
 
     output: list[EmpiricalMarketInterval] = []
 
+    state_index = 0
+    latest_state: BinanceUsdMLocalBookState | None = None
+
     for index in range(count):
-        states = states_by_interval[index]
+        interval_start_ms = start + index * interval_ms
+        interval_end_ms = interval_start_ms + interval_ms
 
-        if not states:
-            interval_start = start + index * interval_ms
+        while (
+            state_index < len(book_states)
+            and book_states[state_index].transaction_time_ms < interval_end_ms
+        ):
+            latest_state = book_states[state_index]
+            state_index += 1
+
+        if latest_state is None:
             raise BinanceUsdMIntervalAggregationError(
-                f"no synchronized book state observed in interval beginning at {interval_start}"
+                f"no synchronized book state is available before interval close {interval_end_ms}"
             )
-
-        closing_state = states[-1]
 
         total_quantity = buy_quantity[index] + sell_quantity[index]
 
@@ -239,16 +240,13 @@ def aggregate_binance_usdm_intervals(
         else:
             flow = float((buy_quantity[index] - sell_quantity[index]) / total_quantity)
 
-        interval_start_ms = start + index * interval_ms
-        interval_end_ms = interval_start_ms + interval_ms
-
         output.append(
             EmpiricalMarketInterval(
                 start_timestamp_ns=(interval_start_ms * _NANOSECONDS_PER_MILLISECOND),
                 end_timestamp_ns=(interval_end_ms * _NANOSECONDS_PER_MILLISECOND),
-                mid_price=float(closing_state.midpoint),
+                mid_price=float(latest_state.midpoint),
                 aggressor_flow=flow,
-                thin_side_depth=float(closing_state.thin_side_depth),
+                thin_side_depth=float(latest_state.thin_side_depth),
             )
         )
 

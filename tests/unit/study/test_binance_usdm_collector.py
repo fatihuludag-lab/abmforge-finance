@@ -298,3 +298,48 @@ def test_finalize_requires_synchronized_book() -> None:
         match="did not obtain a depth snapshot",
     ):
         processor.finalize()
+
+
+def test_processor_exposes_replayable_market_timelines() -> None:
+    processor = BinanceUsdMCaptureProcessor()
+
+    processor.accept_aggregate_trade(
+        _trade(
+            trade_id=1,
+            maker=False,
+        ),
+        received_at_ns=1,
+    )
+
+    processor.accept_depth_update(
+        _depth(
+            first=99,
+            final=102,
+            previous=98,
+        ),
+        received_at_ns=2,
+    )
+
+    processor.accept_depth_snapshot(
+        _snapshot_raw(),
+        _snapshot(),
+        received_at_ns=3,
+    )
+
+    processor.accept_depth_update(
+        _depth(
+            first=103,
+            final=105,
+            previous=102,
+        ),
+        received_at_ns=4,
+    )
+
+    result = processor.finalize()
+
+    assert tuple(state.last_update_id for state in result.book_states) == (102, 105)
+
+    assert len(result.aggregate_trades) == 1
+    assert result.aggregate_trades[0].aggregate_trade_id == 1
+
+    assert result.final_book_state == result.book_states[-1]

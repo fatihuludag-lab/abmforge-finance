@@ -58,6 +58,11 @@ from abmforge_finance.study.robustness import (
     run_flagship_robustness_audit,
     write_robustness_audit_artifact,
 )
+from abmforge_finance.study.stylized_empirical import (
+    EMPIRICAL_MARKET_SIGNATURE_PREPARATION_ID,
+    EmpiricalMarketInterval,
+    prepare_empirical_market_signature_sample,
+)
 from abmforge_finance.study.stylized_estimators import (
     AbsoluteReturnAutocorrelationEstimate,
     AggressorSignAutocorrelationEstimate,
@@ -76,6 +81,13 @@ from abmforge_finance.study.stylized_estimators import (
     estimate_market_signatures,
     estimate_return_tail_shape,
 )
+from abmforge_finance.study.stylized_pipeline import (
+    MarketSignatureInput,
+    MarketSignatureInputProvenance,
+    MarketSignatureSourceKind,
+    PreparedMarketSignatureSample,
+    estimate_prepared_market_signatures,
+)
 from abmforge_finance.study.stylized_protocol import (
     ConcordanceClass,
     StylizedFactExpectation,
@@ -88,10 +100,16 @@ from abmforge_finance.study.stylized_protocol import (
     stylized_validation_seed_tuple,
     verify_bundled_stylized_validation_protocol,
 )
+from abmforge_finance.study.stylized_simulation import (
+    SIMULATION_MARKET_SIGNATURE_PREPARATION_ID,
+    prepare_stylized_validation_simulation_sample,
+)
 
 __all__ = [
+    "EMPIRICAL_MARKET_SIGNATURE_PREPARATION_ID",
     "OFFICIAL_FLAGSHIP_CONFIRMATORY_ARTIFACT_SHA256",
     "OFFICIAL_FLAGSHIP_PRECISION_ARTIFACT_SHA256",
+    "SIMULATION_MARKET_SIGNATURE_PREPARATION_ID",
     "AbsoluteReturnAutocorrelationEstimate",
     "AggressorSignAutocorrelationEstimate",
     "ConcordanceClass",
@@ -100,10 +118,14 @@ __all__ = [
     "ConfirmatoryOutcomeResult",
     "ConfirmatoryRobustnessAnchor",
     "DepthConditionedImpactEstimate",
+    "EmpiricalMarketInterval",
     "FlagshipStudyProtocol",
     "HolmHypothesisResult",
     "LiquidityFragilityEstimate",
     "MarketSignatureEstimates",
+    "MarketSignatureInput",
+    "MarketSignatureInputProvenance",
+    "MarketSignatureSourceKind",
     "MultiplicityMethod",
     "OlsEstimate",
     "OutcomeRole",
@@ -115,6 +137,7 @@ __all__ = [
     "PrecisionPilotPlan",
     "PrecisionPilotReport",
     "PrecisionTarget",
+    "PreparedMarketSignatureSample",
     "ReturnAutocorrelationEstimate",
     "ReturnTailShapeEstimate",
     "RobustnessAuditArtifact",
@@ -143,6 +166,7 @@ __all__ = [
     "estimate_liquidity_fragility_spearman",
     "estimate_log_return_acf",
     "estimate_market_signatures",
+    "estimate_prepared_market_signatures",
     "estimate_return_tail_shape",
     "evaluate_precision_pilot",
     "flagship_narrative_stability_protocol",
@@ -150,6 +174,8 @@ __all__ = [
     "load_confirmatory_robustness_anchor",
     "load_precision_pilot_decision",
     "precision_pilot_seed_tuple",
+    "prepare_empirical_market_signature_sample",
+    "prepare_stylized_validation_simulation_sample",
     "robustness_seed_tuple",
     "run_flagship_confirmatory",
     "run_flagship_precision_pilot",

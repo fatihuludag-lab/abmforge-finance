@@ -9,7 +9,6 @@ import pytest
 
 from abmforge_finance.study.binance_usdm_network import (
     BinanceUsdMNetworkError,
-    load_websocket_connect,
     parse_binance_usdm_exchange_info,
 )
 
@@ -124,10 +123,30 @@ def test_exchange_info_requires_json_object() -> None:
         parse_binance_usdm_exchange_info("[]")
 
 
-def test_optional_websocket_dependency_is_loadable() -> None:
-    connect = load_websocket_connect()
+def test_optional_websocket_dependency_is_loadable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from types import SimpleNamespace
 
-    assert callable(connect)
+    import abmforge_finance.study.binance_usdm_network as network
+
+    def fake_connect(
+        *args: object,
+        **kwargs: object,
+    ) -> object:
+        return object()
+
+    monkeypatch.setattr(
+        network,
+        "import_module",
+        lambda name: SimpleNamespace(
+            connect=fake_connect,
+        ),
+    )
+
+    connect = network.load_websocket_connect()
+
+    assert connect is fake_connect
 
 
 def test_network_transport_hardening_v2(

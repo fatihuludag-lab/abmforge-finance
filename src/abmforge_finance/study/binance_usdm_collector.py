@@ -314,7 +314,7 @@ async def _read_depth_stream(
                 websocket.recv(),
                 timeout=0.25,
             )
-        except TimeoutError:
+        except asyncio.TimeoutError:
             continue
 
         if not isinstance(message, str):
@@ -337,7 +337,7 @@ async def _read_trade_stream(
                 websocket.recv(),
                 timeout=0.25,
             )
-        except TimeoutError:
+        except asyncio.TimeoutError:
             continue
 
         if not isinstance(message, str):

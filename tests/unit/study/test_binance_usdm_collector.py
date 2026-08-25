@@ -703,3 +703,91 @@ def test_collector_finalize_requires_synchronized_book_v4() -> None:
         match="never synchronized",
     ):
         processor.finalize()
+
+
+def test_depth_reader_handles_asyncio_timeout_v5(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import asyncio
+    from typing import Any, cast
+
+    import abmforge_finance.study.binance_usdm_collector as collector
+
+    class IdleWebSocket:
+        async def recv(self) -> str:
+            return ""
+
+    async def scenario() -> None:
+        processor = collector.BinanceUsdMCaptureProcessor()
+        stop = asyncio.Event()
+
+        async def fake_wait_for(
+            awaitable: object,
+            *,
+            timeout: float,
+        ) -> object:
+            assert timeout == 0.25
+
+            coroutine = cast(Any, awaitable)
+            coroutine.close()
+
+            stop.set()
+            raise asyncio.TimeoutError
+
+        monkeypatch.setattr(
+            asyncio,
+            "wait_for",
+            fake_wait_for,
+        )
+
+        await collector._read_depth_stream(
+            IdleWebSocket(),
+            processor,
+            stop,
+        )
+
+    asyncio.run(scenario())
+
+
+def test_trade_reader_handles_asyncio_timeout_v5(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import asyncio
+    from typing import Any, cast
+
+    import abmforge_finance.study.binance_usdm_collector as collector
+
+    class IdleWebSocket:
+        async def recv(self) -> str:
+            return ""
+
+    async def scenario() -> None:
+        processor = collector.BinanceUsdMCaptureProcessor()
+        stop = asyncio.Event()
+
+        async def fake_wait_for(
+            awaitable: object,
+            *,
+            timeout: float,
+        ) -> object:
+            assert timeout == 0.25
+
+            coroutine = cast(Any, awaitable)
+            coroutine.close()
+
+            stop.set()
+            raise asyncio.TimeoutError
+
+        monkeypatch.setattr(
+            asyncio,
+            "wait_for",
+            fake_wait_for,
+        )
+
+        await collector._read_trade_stream(
+            IdleWebSocket(),
+            processor,
+            stop,
+        )
+
+    asyncio.run(scenario())

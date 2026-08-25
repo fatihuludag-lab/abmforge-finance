@@ -38,6 +38,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+empirical = [
+  "websockets>=16.1,<17",
+]
 dev = [
   "build>=1.2",
   "hypothesis>=6.100",

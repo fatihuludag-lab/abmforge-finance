@@ -137,7 +137,7 @@ def replay_binance_usdm_raw_capture(
 def reconstruct_binance_usdm_empirical_intervals(
     directory: str | Path,
 ) -> tuple[EmpiricalMarketInterval, ...]:
-    """Reconstruct conservative complete UTC seconds from a raw artifact."""
+    """Reconstruct complete UTC seconds from a verified raw capture."""
 
     replay = replay_binance_usdm_raw_capture(directory)
 
@@ -146,24 +146,61 @@ def reconstruct_binance_usdm_empirical_intervals(
             "replay contains no synchronized book-state timeline"
         )
 
-    first_state_time = replay.book_states[0].transaction_time_ms
-    last_state_time = replay.book_states[-1].transaction_time_ms
+    if not replay.aggregate_trades:
+        raise FinanceArtifactVerificationError(
+            "replay contains no aggregate trade from which "
+            "trade-stream readiness can be established"
+        )
 
-    start_timestamp_ms = (first_state_time // 1_000) * 1_000
+    first_book_time_ms = replay.book_states[0].transaction_time_ms
+    first_trade_time_ms = replay.aggregate_trades[0].trade_time_ms
 
-    stop_timestamp_ms = (last_state_time // 1_000) * 1_000
+    # The first accepted empirical second must begin only after both
+    # market-data streams have demonstrably become active.
+    readiness_time_ms = max(
+        first_book_time_ms,
+        first_trade_time_ms,
+    )
+
+    start_timestamp_ms = ((readiness_time_ms + 999) // 1_000) * 1_000
+
+    # The final accepted interval must end no later than a UTC
+    # boundary that precedes the final synchronized depth event.
+    # A successful capture artifact also implies the trade reader
+    # remained alive until the coupled capture session closed.
+    last_state_time_ms = replay.book_states[-1].transaction_time_ms
+
+    stop_timestamp_ms = (last_state_time_ms // 1_000) * 1_000
 
     if stop_timestamp_ms <= start_timestamp_ms:
         raise FinanceArtifactVerificationError(
-            "capture does not span one complete empirical second"
+            "capture does not span one complete empirical second after market-data readiness"
         )
 
     interval_count = (stop_timestamp_ms - start_timestamp_ms) // 1_000
 
-    states = tuple(
+    # Include the latest pre-start state so the first accepted
+    # interval can begin from a valid synchronized book.
+    pre_start_states = tuple(
+        state for state in replay.book_states if state.transaction_time_ms < start_timestamp_ms
+    )
+
+    if not pre_start_states:
+        raise FinanceArtifactVerificationError(
+            "no synchronized book state exists before the first complete empirical interval"
+        )
+
+    seed_state = pre_start_states[-1]
+
+    in_window_states = tuple(
         state
         for state in replay.book_states
         if (start_timestamp_ms <= state.transaction_time_ms < stop_timestamp_ms)
+    )
+
+    states = (
+        seed_state,
+        *in_window_states,
     )
 
     trades = tuple(

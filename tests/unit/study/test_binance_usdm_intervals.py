@@ -541,3 +541,51 @@ def test_book_states_must_not_be_empty() -> None:
             book_states=(),
             aggregate_trades=(),
         )
+
+
+def test_aggregation_accepts_single_pre_window_seed_state() -> None:
+    intervals = aggregate_binance_usdm_intervals(
+        start_timestamp_ms=_START,
+        interval_count=2,
+        book_states=(
+            _state(
+                transaction_time_ms=_START - 100,
+                update_id=1,
+                bid="100",
+                ask="102",
+            ),
+            _state(
+                transaction_time_ms=_START + 1_500,
+                update_id=2,
+                bid="101",
+                ask="103",
+            ),
+        ),
+        aggregate_trades=(),
+    )
+
+    assert len(intervals) == 2
+    assert intervals[0].mid_price == pytest.approx(101.0)
+    assert intervals[1].mid_price == pytest.approx(102.0)
+
+
+def test_aggregation_rejects_second_pre_window_state() -> None:
+    with pytest.raises(
+        BinanceUsdMIntervalAggregationError,
+        match="outside the aggregation window",
+    ):
+        aggregate_binance_usdm_intervals(
+            start_timestamp_ms=_START,
+            interval_count=2,
+            book_states=(
+                _state(
+                    transaction_time_ms=_START - 200,
+                    update_id=1,
+                ),
+                _state(
+                    transaction_time_ms=_START - 100,
+                    update_id=2,
+                ),
+            ),
+            aggregate_trades=(),
+        )

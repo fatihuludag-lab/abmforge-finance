@@ -5,6 +5,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
+from abmforge_finance.exceptions import FinanceArtifactVerificationError
 from abmforge_finance.study.binance_usdm_artifacts import (
     BinanceUsdMCaptureProvenance,
     BinanceUsdMRawChannel,
@@ -164,3 +167,21 @@ def test_replay_is_deterministic(
     second = replay_binance_usdm_raw_capture(target)
 
     assert first == second
+
+
+def test_interval_reconstruction_excludes_partial_opening_second(
+    tmp_path: Path,
+) -> None:
+    target = _write(tmp_path)
+
+    from abmforge_finance.study.binance_usdm_replay import (
+        reconstruct_binance_usdm_empirical_intervals,
+    )
+
+    # The synthetic fixture is intentionally too short after readiness
+    # to contain a complete accepted UTC second.
+    with pytest.raises(
+        FinanceArtifactVerificationError,
+        match="complete empirical second",
+    ):
+        reconstruct_binance_usdm_empirical_intervals(target)

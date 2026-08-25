@@ -86,7 +86,11 @@ def _validate_book_states(
                 "book-state symbol does not match the frozen contract"
             )
 
-        if not (start_timestamp_ms <= state.transaction_time_ms < stop_timestamp_ms):
+        is_initial_pre_window_seed = index == 0 and state.transaction_time_ms < start_timestamp_ms
+
+        if not is_initial_pre_window_seed and not (
+            start_timestamp_ms <= state.transaction_time_ms < stop_timestamp_ms
+        ):
             raise BinanceUsdMIntervalAggregationError(
                 "book-state transaction time lies outside the aggregation window"
             )

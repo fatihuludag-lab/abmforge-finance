@@ -305,3 +305,29 @@ Changes to the symbol, physical interval, flow quantity field, RPI treatment,
 book synchronization rule, depth representation, missing-data policy, block
 size, or reference-block selection after official collection begins require a
 new empirical-contract version.
+
+
+### Complete UTC-second acceptance
+
+Canonical empirical intervals must not include a partially observed opening
+second.
+
+Offline reconstruction establishes a market-data readiness time as the later
+of:
+
+1. the first synchronized local-book transaction time; and
+2. the first observed aggregate-trade trade time.
+
+The first accepted interval begins at the first UTC-second boundary at or after
+that readiness time.
+
+The synchronized book state immediately preceding that boundary is retained as
+the seed state for the first accepted interval.
+
+The closing boundary is conservatively bounded by the final synchronized depth
+event. A capture artifact is written only after both coupled WebSocket reader
+tasks complete normally; a reader failure invalidates the capture rather than
+creating zero-flow observations.
+
+Thus partial opening or closing seconds are not admitted to the empirical
+reference sample.

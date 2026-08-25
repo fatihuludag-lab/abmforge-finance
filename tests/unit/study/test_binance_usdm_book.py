@@ -402,3 +402,336 @@ def test_local_book_state_is_immutable() -> None:
 
     with pytest.raises(FrozenInstanceError):
         state.last_update_id = 999  # type: ignore[misc]
+
+
+def test_local_book_state_integrity_edges_v3() -> None:
+    from decimal import Decimal
+
+    from abmforge_finance.study.binance_usdm_book import (
+        BinanceUsdMBookSynchronizationError,
+        BinanceUsdMLocalBookState,
+    )
+    from abmforge_finance.study.binance_usdm_events import (
+        BinanceUsdMBookLevel,
+    )
+
+    bid_100 = BinanceUsdMBookLevel(
+        Decimal("100"),
+        Decimal("1"),
+    )
+    bid_99 = BinanceUsdMBookLevel(
+        Decimal("99"),
+        Decimal("1"),
+    )
+    ask_101 = BinanceUsdMBookLevel(
+        Decimal("101"),
+        Decimal("1"),
+    )
+    ask_102 = BinanceUsdMBookLevel(
+        Decimal("102"),
+        Decimal("1"),
+    )
+
+    def make_state(
+        *,
+        bids: tuple[BinanceUsdMBookLevel, ...],
+        asks: tuple[BinanceUsdMBookLevel, ...],
+    ) -> BinanceUsdMLocalBookState:
+        return BinanceUsdMLocalBookState(
+            symbol="BTCUSDT",
+            last_update_id=10,
+            event_time_ms=1000,
+            transaction_time_ms=999,
+            bids=bids,
+            asks=asks,
+        )
+
+    with pytest.raises(
+        BinanceUsdMBookSynchronizationError,
+        match="at least one bid",
+    ):
+        make_state(
+            bids=(),
+            asks=(ask_101,),
+        )
+
+    with pytest.raises(
+        BinanceUsdMBookSynchronizationError,
+        match="at least one ask",
+    ):
+        make_state(
+            bids=(bid_100,),
+            asks=(),
+        )
+
+    with pytest.raises(
+        BinanceUsdMBookSynchronizationError,
+        match="strictly descending",
+    ):
+        make_state(
+            bids=(bid_99, bid_100),
+            asks=(ask_101,),
+        )
+
+    with pytest.raises(
+        BinanceUsdMBookSynchronizationError,
+        match="strictly ascending",
+    ):
+        make_state(
+            bids=(bid_100,),
+            asks=(ask_102, ask_101),
+        )
+
+    with pytest.raises(
+        BinanceUsdMBookSynchronizationError,
+        match="positive spread",
+    ):
+        make_state(
+            bids=(ask_101,),
+            asks=(ask_101,),
+        )
+
+
+def test_unsynchronized_local_book_api_is_guarded_v3() -> None:
+    from abmforge_finance.study.binance_usdm_book import (
+        BinanceUsdMBookSynchronizationError,
+        BinanceUsdMLocalBook,
+    )
+    from abmforge_finance.study.binance_usdm_contract import (
+        binance_usdm_empirical_contract,
+    )
+
+    book = BinanceUsdMLocalBook(contract=binance_usdm_empirical_contract())
+
+    with pytest.raises(
+        BinanceUsdMBookSynchronizationError,
+        match="not synchronized",
+    ):
+        _ = book.last_update_id
+
+    with pytest.raises(
+        BinanceUsdMBookSynchronizationError,
+        match="not synchronized",
+    ):
+        book.state()
+
+    with pytest.raises(
+        BinanceUsdMBookSynchronizationError,
+        match="not synchronized",
+    ):
+        book.apply(_bridge())
+
+
+def test_synchronization_input_type_and_identity_guards_v3() -> None:
+    from dataclasses import replace
+    from typing import cast
+
+    from abmforge_finance.study.binance_usdm_book import (
+        BinanceUsdMBookSynchronizationError,
+        BinanceUsdMLocalBook,
+    )
+    from abmforge_finance.study.binance_usdm_events import (
+        BinanceUsdMDepthSnapshot,
+        BinanceUsdMDepthUpdateEvent,
+    )
+
+    with pytest.raises(
+        TypeError,
+        match="snapshot",
+    ):
+        BinanceUsdMLocalBook.synchronize(
+            cast(
+                BinanceUsdMDepthSnapshot,
+                object(),
+            ),
+            (),
+        )
+
+    with pytest.raises(
+        TypeError,
+        match=r"buffered_events\[0\]",
+    ):
+        BinanceUsdMLocalBook.synchronize(
+            _snapshot(),
+            (
+                cast(
+                    BinanceUsdMDepthUpdateEvent,
+                    object(),
+                ),
+            ),
+        )
+
+    wrong_symbol_snapshot = replace(
+        _snapshot(),
+        symbol="ETHUSDT",
+    )
+
+    with pytest.raises(
+        BinanceUsdMBookSynchronizationError,
+        match="snapshot symbol",
+    ):
+        BinanceUsdMLocalBook.synchronize(
+            wrong_symbol_snapshot,
+            (_bridge(),),
+        )
+
+
+def test_snapshot_duplicate_price_levels_are_rejected_v3() -> None:
+    from dataclasses import replace
+
+    from abmforge_finance.study.binance_usdm_book import (
+        BinanceUsdMBookSynchronizationError,
+        BinanceUsdMLocalBook,
+    )
+
+    snapshot = _snapshot()
+
+    duplicate_bids = replace(
+        snapshot,
+        bids=(
+            snapshot.bids[0],
+            snapshot.bids[0],
+        ),
+    )
+
+    with pytest.raises(
+        BinanceUsdMBookSynchronizationError,
+        match="duplicate bid",
+    ):
+        BinanceUsdMLocalBook.synchronize(
+            duplicate_bids,
+            (_bridge(),),
+        )
+
+    duplicate_asks = replace(
+        snapshot,
+        asks=(
+            snapshot.asks[0],
+            snapshot.asks[0],
+        ),
+    )
+
+    with pytest.raises(
+        BinanceUsdMBookSynchronizationError,
+        match="duplicate ask",
+    ):
+        BinanceUsdMLocalBook.synchronize(
+            duplicate_asks,
+            (_bridge(),),
+        )
+
+
+def test_applied_event_pair_and_symbol_type_are_guarded_v3() -> None:
+    from dataclasses import replace
+
+    from abmforge_finance.study.binance_usdm_book import (
+        BinanceUsdMBookSynchronizationError,
+        BinanceUsdMLocalBook,
+    )
+
+    book = BinanceUsdMLocalBook.synchronize(
+        _snapshot(),
+        (_bridge(),),
+    )
+
+    with pytest.raises(
+        BinanceUsdMBookSynchronizationError,
+        match="pair does not match",
+    ):
+        book.apply(
+            replace(
+                _bridge(),
+                pair="ETHUSDT",
+            )
+        )
+
+    # symbol_type=2 cannot normally be constructed because the
+    # event-level validator correctly rejects it first. Corrupt one
+    # otherwise valid event deliberately to exercise the book layer's
+    # defense-in-depth identity guard.
+    invalid_symbol_type_event = _bridge()
+    object.__setattr__(
+        invalid_symbol_type_event,
+        "symbol_type",
+        2,
+    )
+
+    with pytest.raises(
+        BinanceUsdMBookSynchronizationError,
+        match="symbol type",
+    ):
+        book.apply(invalid_symbol_type_event)
+
+
+def test_book_remaining_defense_paths_v4() -> None:
+    from dataclasses import replace
+    from decimal import Decimal
+    from typing import cast
+
+    from abmforge_finance.study.binance_usdm_book import (
+        BinanceUsdMBookSynchronizationError,
+        BinanceUsdMLocalBook,
+    )
+    from abmforge_finance.study.binance_usdm_events import (
+        BinanceUsdMBookLevel,
+        BinanceUsdMDepthUpdateEvent,
+    )
+
+    first = _bridge()
+
+    second = replace(
+        first,
+        event_time_ms=first.event_time_ms + 1,
+        transaction_time_ms=(first.transaction_time_ms + 1),
+        first_update_id=(first.final_update_id + 1),
+        final_update_id=(first.final_update_id + 2),
+        previous_final_update_id=(first.final_update_id),
+    )
+
+    book = BinanceUsdMLocalBook.synchronize(
+        _snapshot(),
+        (
+            first,
+            second,
+        ),
+    )
+
+    assert book.last_update_id == second.final_update_id
+
+    with pytest.raises(
+        TypeError,
+        match="event must be",
+    ):
+        book.apply(
+            cast(
+                BinanceUsdMDepthUpdateEvent,
+                object(),
+            )
+        )
+
+    state = book.state()
+
+    removals = tuple(
+        BinanceUsdMBookLevel(
+            level.price,
+            Decimal("0"),
+        )
+        for level in state.asks
+    )
+
+    event = replace(
+        first,
+        event_time_ms=first.event_time_ms + 10,
+        transaction_time_ms=(first.transaction_time_ms + 10),
+        first_update_id=(book.last_update_id + 1),
+        final_update_id=(book.last_update_id + 1),
+        previous_final_update_id=(book.last_update_id),
+        bid_updates=(),
+        ask_updates=removals,
+    )
+
+    with pytest.raises(
+        BinanceUsdMBookSynchronizationError,
+        match="lost all ask levels",
+    ):
+        book.apply(event)

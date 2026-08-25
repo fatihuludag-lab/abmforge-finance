@@ -241,3 +241,145 @@ def test_contract_rejects_wrong_aggregate_trade_update_speed() -> None:
             _contract(),
             aggregate_trade_update_speed_ms=250,
         )
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement_value", "message"),
+    (
+        ("contract_id", "wrong", "contract id"),
+        ("venue", "other", "venue"),
+        ("market_family", "spot", "market_family"),
+        ("symbol", "btcusdt", "uppercase"),
+        ("pair", "ETHUSDT", "pair"),
+        ("contract_type", "CURRENT_QUARTER", "PERPETUAL"),
+        ("trading_status", "BREAK", "TRADING"),
+        ("quote_asset", "BTC", "quote_asset"),
+        ("margin_asset", "BTC", "margin_asset"),
+        ("timezone", "Europe/Istanbul", "UTC"),
+        ("interval_ns", 2_000_000_000, "one second"),
+        (
+            "websocket_base_url",
+            "wss://example.invalid",
+            "WebSocket base URL",
+        ),
+        (
+            "depth_stream",
+            "ethusdt@depth@100ms",
+            "depth stream",
+        ),
+        (
+            "aggregate_trade_stream",
+            "ethusdt@aggTrade",
+            "aggregate-trade stream",
+        ),
+        (
+            "rest_base_url",
+            "https://example.invalid",
+            "REST base URL",
+        ),
+        (
+            "exchange_info_path",
+            "/wrong",
+            "exchange-info path",
+        ),
+        (
+            "depth_snapshot_path",
+            "/wrong",
+            "depth-snapshot path",
+        ),
+        (
+            "aggregate_trade_buyer_maker_field",
+            "wrong",
+            "buyer-maker field",
+        ),
+        (
+            "aggregate_trade_symbol_type_field",
+            "wrong",
+            "symbol-type field",
+        ),
+        (
+            "no_trade_flow_value",
+            1.0,
+            "no-trade flow",
+        ),
+        (
+            "depth_first_event_rule",
+            "wrong",
+            "first depth-event",
+        ),
+        (
+            "depth_continuity_rule",
+            "wrong",
+            "depth continuity",
+        ),
+        (
+            "depth_update_quantity_semantics",
+            "delta",
+            "absolute semantics",
+        ),
+        (
+            "zero_depth_quantity_action",
+            "retain",
+            "remove the price level",
+        ),
+        (
+            "depth_measurement",
+            "wrong",
+            "depth measurement",
+        ),
+        (
+            "clock_alignment",
+            "local-clock",
+            "UTC-second aligned",
+        ),
+        (
+            "interval_close_state_rule",
+            "wrong",
+            "interval-closing",
+        ),
+        (
+            "depth_gap_policy",
+            "ignore",
+            "depth-gap policy",
+        ),
+        (
+            "reconnect_policy",
+            "continue",
+            "reconnect policy",
+        ),
+        (
+            "raw_event_format",
+            "csv",
+            "jsonl",
+        ),
+        (
+            "hash_algorithm",
+            "md5",
+            "sha256",
+        ),
+    ),
+)
+def test_frozen_contract_rejects_protocol_drift_v2(
+    field: str,
+    replacement_value: object,
+    message: str,
+) -> None:
+    from dataclasses import replace
+    from typing import Any, cast
+
+    from abmforge_finance.exceptions import StudyProtocolError
+    from abmforge_finance.study.binance_usdm_contract import (
+        binance_usdm_empirical_contract,
+    )
+
+    contract = binance_usdm_empirical_contract()
+
+    with pytest.raises(
+        StudyProtocolError,
+        match=message,
+    ):
+        replace_any = cast(Any, replace)
+        replace_any(
+            contract,
+            **{field: replacement_value},
+        )

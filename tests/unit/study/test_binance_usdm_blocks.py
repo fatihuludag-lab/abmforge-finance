@@ -245,3 +245,257 @@ def test_empty_source_integrity_failure_is_not_valid_metadata() -> None:
             intervals=_intervals(count=1),
             source_integrity_failure=" ",
         )
+
+
+def test_block_container_type_guards_v3() -> None:
+    from typing import cast
+
+    from abmforge_finance.study.binance_usdm_blocks import (
+        evaluate_binance_usdm_empirical_block,
+    )
+    from abmforge_finance.study.stylized_empirical import (
+        EmpiricalMarketInterval,
+    )
+
+    with pytest.raises(
+        TypeError,
+        match="intervals must be a tuple",
+    ):
+        evaluate_binance_usdm_empirical_block(
+            candidate_id="candidate",
+            source_id="source",
+            intervals=cast(
+                tuple[EmpiricalMarketInterval, ...],
+                [],
+            ),
+        )
+
+    with pytest.raises(
+        TypeError,
+        match=r"intervals\[0\]",
+    ):
+        evaluate_binance_usdm_empirical_block(
+            candidate_id="candidate",
+            source_id="source",
+            intervals=(
+                cast(
+                    EmpiricalMarketInterval,
+                    object(),
+                ),
+            ),
+        )
+
+
+def test_valid_block_result_invariants_are_enforced_v3() -> None:
+    from dataclasses import replace
+    from typing import Any, cast
+
+    from abmforge_finance.exceptions import (
+        InvalidMetricInputError,
+    )
+    from abmforge_finance.study.binance_usdm_blocks import (
+        BinanceUsdMEmpiricalBlockRejectionReason,
+        BinanceUsdMEmpiricalBlockStatus,
+        evaluate_binance_usdm_empirical_block,
+    )
+
+    valid = evaluate_binance_usdm_empirical_block(
+        candidate_id="candidate",
+        source_id="source",
+        intervals=_intervals(),
+    )
+
+    assert valid.status is BinanceUsdMEmpiricalBlockStatus.VALID
+    assert valid.prepared_sample is not None
+
+    replace_any = cast(Any, replace)
+
+    with pytest.raises(
+        TypeError,
+        match="status",
+    ):
+        replace_any(
+            valid,
+            status="VALID",
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="raw_interval_count",
+    ):
+        replace(
+            valid,
+            raw_interval_count=-1,
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="canonical_observation_count",
+    ):
+        replace(
+            valid,
+            canonical_observation_count=-1,
+        )
+
+    reason = next(iter(BinanceUsdMEmpiricalBlockRejectionReason))
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="cannot have a rejection reason",
+    ):
+        replace(
+            valid,
+            rejection_reason=reason,
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="cannot have rejection detail",
+    ):
+        replace(
+            valid,
+            rejection_detail="unexpected",
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="must contain a prepared sample",
+    ):
+        replace(
+            valid,
+            prepared_sample=None,
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="analysis timestamps",
+    ):
+        replace(
+            valid,
+            analysis_start_timestamp_ns=None,
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="must match the prepared sample",
+    ):
+        replace(
+            valid,
+            canonical_observation_count=(valid.canonical_observation_count + 1),
+        )
+
+
+def test_rejected_block_result_invariants_are_enforced_v3() -> None:
+    from dataclasses import replace
+
+    from abmforge_finance.exceptions import (
+        InvalidMetricInputError,
+    )
+    from abmforge_finance.study.binance_usdm_blocks import (
+        BinanceUsdMEmpiricalBlockStatus,
+        evaluate_binance_usdm_empirical_block,
+    )
+
+    rejected = evaluate_binance_usdm_empirical_block(
+        candidate_id="candidate",
+        source_id="source",
+        intervals=(),
+        source_integrity_failure="source gap",
+    )
+
+    assert rejected.status is BinanceUsdMEmpiricalBlockStatus.REJECTED
+
+    valid = evaluate_binance_usdm_empirical_block(
+        candidate_id="candidate",
+        source_id="source",
+        intervals=_intervals(),
+    )
+
+    assert valid.prepared_sample is not None
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="must have a rejection reason",
+    ):
+        replace(
+            rejected,
+            rejection_reason=None,
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="must have rejection detail",
+    ):
+        replace(
+            rejected,
+            rejection_detail=None,
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="cannot contain a prepared sample",
+    ):
+        replace(
+            rejected,
+            prepared_sample=valid.prepared_sample,
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="zero canonical observations",
+    ):
+        replace(
+            rejected,
+            canonical_observation_count=1,
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="cannot expose analysis timestamps",
+    ):
+        replace(
+            rejected,
+            analysis_start_timestamp_ns=1,
+        )
+
+
+def test_empty_interval_raw_bounds_are_empty_v3() -> None:
+    import abmforge_finance.study.binance_usdm_blocks as blocks
+
+    assert blocks._raw_bounds(()) == (
+        None,
+        None,
+    )
+
+
+def test_block_rejects_wrong_prepared_observation_count_v4(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import abmforge_finance.study.binance_usdm_blocks as blocks
+    from abmforge_finance.study.stylized_empirical import (
+        prepare_empirical_market_signature_sample,
+    )
+
+    wrong_sample = prepare_empirical_market_signature_sample(
+        _intervals()[:-1],
+        source_id="wrong-count",
+    )
+
+    monkeypatch.setattr(
+        blocks,
+        "prepare_empirical_market_signature_sample",
+        lambda *args, **kwargs: wrong_sample,
+    )
+
+    result = blocks.evaluate_binance_usdm_empirical_block(
+        candidate_id="candidate",
+        source_id="source",
+        intervals=_intervals(),
+    )
+
+    assert result.status is blocks.BinanceUsdMEmpiricalBlockStatus.REJECTED
+
+    assert (
+        result.rejection_reason
+        is blocks.BinanceUsdMEmpiricalBlockRejectionReason.CANONICAL_PREPARATION_FAILURE
+    )

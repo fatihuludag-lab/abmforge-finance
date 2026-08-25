@@ -589,3 +589,194 @@ def test_aggregation_rejects_second_pre_window_state() -> None:
             ),
             aggregate_trades=(),
         )
+
+
+def test_interval_remaining_validation_edges_v4() -> None:
+    from dataclasses import replace
+    from typing import cast
+
+    from abmforge_finance.study.binance_usdm_book import (
+        BinanceUsdMLocalBookState,
+    )
+    from abmforge_finance.study.binance_usdm_contract import (
+        binance_usdm_empirical_contract,
+    )
+    from abmforge_finance.study.binance_usdm_events import (
+        BinanceUsdMAggTradeEvent,
+    )
+
+    with pytest.raises(
+        BinanceUsdMIntervalAggregationError,
+        match="start_timestamp_ms",
+    ):
+        aggregate_binance_usdm_intervals(
+            start_timestamp_ms=cast(int, True),
+            interval_count=1,
+            book_states=(
+                _state(
+                    transaction_time_ms=_START + 500,
+                    update_id=1,
+                ),
+            ),
+            aggregate_trades=(),
+        )
+
+    with pytest.raises(
+        BinanceUsdMIntervalAggregationError,
+        match="start_timestamp_ms",
+    ):
+        aggregate_binance_usdm_intervals(
+            start_timestamp_ms=-1,
+            interval_count=1,
+            book_states=(
+                _state(
+                    transaction_time_ms=_START + 500,
+                    update_id=1,
+                ),
+            ),
+            aggregate_trades=(),
+        )
+
+    with pytest.raises(
+        TypeError,
+        match="book_states must be a tuple",
+    ):
+        aggregate_binance_usdm_intervals(
+            start_timestamp_ms=_START,
+            interval_count=1,
+            book_states=cast(
+                tuple[BinanceUsdMLocalBookState, ...],
+                [],
+            ),
+            aggregate_trades=(),
+        )
+
+    with pytest.raises(
+        TypeError,
+        match=r"book_states\[0\]",
+    ):
+        aggregate_binance_usdm_intervals(
+            start_timestamp_ms=_START,
+            interval_count=1,
+            book_states=(
+                cast(
+                    BinanceUsdMLocalBookState,
+                    object(),
+                ),
+            ),
+            aggregate_trades=(),
+        )
+
+    wrong_state = replace(
+        _state(
+            transaction_time_ms=_START + 500,
+            update_id=1,
+        ),
+        symbol="ETHUSDT",
+    )
+
+    with pytest.raises(
+        BinanceUsdMIntervalAggregationError,
+        match="book-state symbol",
+    ):
+        aggregate_binance_usdm_intervals(
+            start_timestamp_ms=_START,
+            interval_count=1,
+            book_states=(wrong_state,),
+            aggregate_trades=(),
+        )
+
+    valid_state = _state(
+        transaction_time_ms=_START + 500,
+        update_id=1,
+    )
+
+    with pytest.raises(
+        TypeError,
+        match="aggregate_trades must be a tuple",
+    ):
+        aggregate_binance_usdm_intervals(
+            start_timestamp_ms=_START,
+            interval_count=1,
+            book_states=(valid_state,),
+            aggregate_trades=cast(
+                tuple[BinanceUsdMAggTradeEvent, ...],
+                [],
+            ),
+        )
+
+    with pytest.raises(
+        TypeError,
+        match=r"aggregate_trades\[0\]",
+    ):
+        aggregate_binance_usdm_intervals(
+            start_timestamp_ms=_START,
+            interval_count=1,
+            book_states=(valid_state,),
+            aggregate_trades=(
+                cast(
+                    BinanceUsdMAggTradeEvent,
+                    object(),
+                ),
+            ),
+        )
+
+    trade = _trade(
+        trade_time_ms=_START + 100,
+        trade_id=1,
+        normal_quantity="1",
+        buyer_is_maker=False,
+    )
+
+    with pytest.raises(
+        BinanceUsdMIntervalAggregationError,
+        match="aggregate-trade symbol",
+    ):
+        aggregate_binance_usdm_intervals(
+            start_timestamp_ms=_START,
+            interval_count=1,
+            book_states=(valid_state,),
+            aggregate_trades=(
+                replace(
+                    trade,
+                    symbol="ETHUSDT",
+                ),
+            ),
+        )
+
+    wrong_type_trade = trade
+    object.__setattr__(
+        wrong_type_trade,
+        "symbol_type",
+        2,
+    )
+
+    with pytest.raises(
+        BinanceUsdMIntervalAggregationError,
+        match="symbol type",
+    ):
+        aggregate_binance_usdm_intervals(
+            start_timestamp_ms=_START,
+            interval_count=1,
+            book_states=(valid_state,),
+            aggregate_trades=(wrong_type_trade,),
+        )
+
+    contract = binance_usdm_empirical_contract()
+    object.__setattr__(
+        contract,
+        "interval_ns",
+        2_000_000_000,
+    )
+
+    with pytest.raises(
+        BinanceUsdMIntervalAggregationError,
+        match="one-second intervals",
+    ):
+        aggregate_binance_usdm_intervals(
+            start_timestamp_ms=_START,
+            interval_count=1,
+            book_states=(valid_state,),
+            aggregate_trades=(),
+            contract=contract,
+        )

@@ -296,3 +296,434 @@ def test_book_level_rejects_negative_quantity() -> None:
             price=Decimal("100"),
             quantity=Decimal("-1"),
         )
+
+
+def test_event_scalar_validation_edges_v2() -> None:
+    import abmforge_finance.study.binance_usdm_events as events
+    from abmforge_finance.exceptions import InvalidMetricInputError
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="non-empty string",
+    ):
+        events._text(
+            "",
+            label="value",
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="non-negative integer",
+    ):
+        events._integer(
+            True,
+            label="value",
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="non-negative integer",
+    ):
+        events._integer(
+            -1,
+            label="value",
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="boolean",
+    ):
+        events._boolean(
+            1,
+            label="value",
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="valid decimal string",
+    ):
+        events._decimal_string(
+            "not-a-decimal",
+            label="value",
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="finite",
+    ):
+        events._decimal_string(
+            "NaN",
+            label="value",
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="array",
+    ):
+        events._sequence(
+            "not-an-array",
+            label="value",
+        )
+
+
+def test_book_level_validation_edges_v2() -> None:
+    from decimal import Decimal
+    from typing import cast
+
+    from abmforge_finance.exceptions import InvalidMetricInputError
+    from abmforge_finance.study.binance_usdm_events import (
+        BinanceUsdMBookLevel,
+    )
+
+    with pytest.raises(
+        TypeError,
+        match="price must be a Decimal",
+    ):
+        BinanceUsdMBookLevel(
+            price=cast(Decimal, "100"),
+            quantity=Decimal("1"),
+        )
+
+    with pytest.raises(
+        TypeError,
+        match="quantity must be a Decimal",
+    ):
+        BinanceUsdMBookLevel(
+            price=Decimal("100"),
+            quantity=cast(Decimal, "1"),
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="price must be positive",
+    ):
+        BinanceUsdMBookLevel(
+            price=Decimal("0"),
+            quantity=Decimal("1"),
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="quantity must be non-negative",
+    ):
+        BinanceUsdMBookLevel(
+            price=Decimal("100"),
+            quantity=Decimal("-1"),
+        )
+
+
+def test_aggregate_trade_validation_edges_v2() -> None:
+    from dataclasses import replace
+    from decimal import Decimal
+    from typing import cast
+
+    from abmforge_finance.exceptions import InvalidMetricInputError
+    from abmforge_finance.study.binance_usdm_events import (
+        BinanceUsdMAggTradeEvent,
+    )
+
+    payload = {
+        "e": "aggTrade",
+        "E": 1000,
+        "T": 999,
+        "s": "BTCUSDT",
+        "st": 1,
+        "a": 10,
+        "p": "100.5",
+        "q": "2",
+        "nq": "1",
+        "f": 20,
+        "l": 21,
+        "m": False,
+    }
+
+    event = BinanceUsdMAggTradeEvent.from_mapping(payload)
+
+    mutations = (
+        (
+            {"symbol": "btcusdt"},
+            InvalidMetricInputError,
+            "uppercase",
+        ),
+        (
+            {"symbol_type": 2},
+            InvalidMetricInputError,
+            "USD-M",
+        ),
+        (
+            {
+                "price": cast(
+                    Decimal,
+                    "100",
+                )
+            },
+            TypeError,
+            "price must be a Decimal",
+        ),
+        (
+            {
+                "quantity": cast(
+                    Decimal,
+                    "2",
+                )
+            },
+            TypeError,
+            "quantity must be a Decimal",
+        ),
+        (
+            {
+                "normal_quantity": cast(
+                    Decimal,
+                    "1",
+                )
+            },
+            TypeError,
+            "normal_quantity must be a Decimal",
+        ),
+        (
+            {"price": Decimal("0")},
+            InvalidMetricInputError,
+            "price must be positive",
+        ),
+        (
+            {"quantity": Decimal("0")},
+            InvalidMetricInputError,
+            "quantity must be positive",
+        ),
+        (
+            {"normal_quantity": Decimal("-1")},
+            InvalidMetricInputError,
+            "normal quantity must be non-negative",
+        ),
+        (
+            {
+                "first_trade_id": 30,
+                "last_trade_id": 29,
+            },
+            InvalidMetricInputError,
+            "first_trade_id",
+        ),
+    )
+
+    for changes, exception_type, message in mutations:
+        with pytest.raises(
+            exception_type,
+            match=message,
+        ):
+            replace(
+                event,
+                **changes,
+            )
+
+
+def test_depth_update_validation_edges_v2() -> None:
+    from dataclasses import replace
+    from typing import cast
+
+    from abmforge_finance.exceptions import InvalidMetricInputError
+    from abmforge_finance.study.binance_usdm_events import (
+        BinanceUsdMBookLevel,
+        BinanceUsdMDepthUpdateEvent,
+    )
+
+    payload = {
+        "e": "depthUpdate",
+        "E": 1000,
+        "T": 999,
+        "s": "BTCUSDT",
+        "ps": "BTCUSDT",
+        "st": 1,
+        "U": 100,
+        "u": 101,
+        "pu": 99,
+        "b": [["100", "1"]],
+        "a": [["101", "1"]],
+    }
+
+    event = BinanceUsdMDepthUpdateEvent.from_mapping(payload)
+
+    bad_payload = dict(payload)
+    bad_payload["e"] = "wrong"
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="depthUpdate",
+    ):
+        BinanceUsdMDepthUpdateEvent.from_mapping(bad_payload)
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="USD-M",
+    ):
+        replace(
+            event,
+            symbol_type=2,
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="uppercase",
+    ):
+        replace(
+            event,
+            symbol="btcusdt",
+        )
+
+    with pytest.raises(
+        TypeError,
+        match="bid_updates must be a tuple",
+    ):
+        replace(
+            event,
+            bid_updates=cast(
+                tuple[BinanceUsdMBookLevel, ...],
+                [],
+            ),
+        )
+
+    with pytest.raises(
+        TypeError,
+        match="ask_updates must be a tuple",
+    ):
+        replace(
+            event,
+            ask_updates=cast(
+                tuple[BinanceUsdMBookLevel, ...],
+                [],
+            ),
+        )
+
+    with pytest.raises(
+        TypeError,
+        match="bid_updates must contain",
+    ):
+        replace(
+            event,
+            bid_updates=(
+                cast(
+                    BinanceUsdMBookLevel,
+                    object(),
+                ),
+            ),
+        )
+
+    with pytest.raises(
+        TypeError,
+        match="ask_updates must contain",
+    ):
+        replace(
+            event,
+            ask_updates=(
+                cast(
+                    BinanceUsdMBookLevel,
+                    object(),
+                ),
+            ),
+        )
+
+
+def test_depth_snapshot_validation_edges_v2() -> None:
+    from dataclasses import replace
+    from typing import cast
+
+    from abmforge_finance.exceptions import (
+        InvalidMetricInputError,
+        StudyProtocolError,
+    )
+    from abmforge_finance.study.binance_usdm_events import (
+        BinanceUsdMBookLevel,
+        BinanceUsdMDepthSnapshot,
+    )
+
+    payload = {
+        "lastUpdateId": 100,
+        "E": 1000,
+        "T": 999,
+        "bids": [
+            ["100", "5"],
+        ],
+        "asks": [
+            ["101", "6"],
+        ],
+    }
+
+    snapshot = BinanceUsdMDepthSnapshot.from_mapping(payload)
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="uppercase",
+    ):
+        replace(
+            snapshot,
+            symbol="btcusdt",
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="bids must not be empty",
+    ):
+        replace(
+            snapshot,
+            bids=(),
+        )
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="asks must not be empty",
+    ):
+        replace(
+            snapshot,
+            asks=(),
+        )
+
+    with pytest.raises(
+        TypeError,
+        match="bids must contain",
+    ):
+        replace(
+            snapshot,
+            bids=(
+                cast(
+                    BinanceUsdMBookLevel,
+                    object(),
+                ),
+            ),
+        )
+
+    with pytest.raises(
+        TypeError,
+        match="asks must contain",
+    ):
+        replace(
+            snapshot,
+            asks=(
+                cast(
+                    BinanceUsdMBookLevel,
+                    object(),
+                ),
+            ),
+        )
+
+    with pytest.raises(
+        StudyProtocolError,
+        match="snapshot symbol",
+    ):
+        BinanceUsdMDepthSnapshot.from_mapping(
+            payload,
+            symbol="ETHUSDT",
+        )
+
+
+def test_book_level_array_shape_validation_v2() -> None:
+    import abmforge_finance.study.binance_usdm_events as events
+    from abmforge_finance.exceptions import InvalidMetricInputError
+
+    with pytest.raises(
+        InvalidMetricInputError,
+        match="price and quantity",
+    ):
+        events._book_levels(
+            [["100"]],
+            label="levels",
+            zero_quantity_allowed=True,
+        )

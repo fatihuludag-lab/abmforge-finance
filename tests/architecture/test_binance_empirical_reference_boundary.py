@@ -1,6 +1,5 @@
-from pathlib import Path
 import ast
-
+from pathlib import Path
 
 SOURCE = (
     Path(__file__).parents[2] / "src" / "abmforge_finance" / "study" / "binance_usdm_reference.py"
@@ -17,7 +16,7 @@ ALLOWED_ABMFORGE_IMPORTS = {
 
 
 def test_binance_empirical_reference_selection_boundary() -> None:
-    """Reference selection must stay independent of scientific outcomes."""
+    """Reference selection must remain independent of scientific outcomes."""
 
     tree = ast.parse(SOURCE.read_text(encoding="utf-8"))
 
@@ -38,7 +37,7 @@ def test_binance_empirical_reference_selection_boundary() -> None:
     unexpected = observed - ALLOWED_ABMFORGE_IMPORTS
 
     assert not unexpected, (
-        "Binance empirical reference-set selection "
-        "acquired forbidden project dependencies: "
+        "Empirical reference-set selection acquired "
+        "forbidden project dependencies: "
         f"{sorted(unexpected)}"
     )

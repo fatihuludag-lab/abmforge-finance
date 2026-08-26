@@ -1,4 +1,4 @@
-"""Live Binance USD-M smoke collector for Phase 11 empirical validation."""
+"""Live Binance USD-M collector for Phase 11 empirical validation."""
 
 from __future__ import annotations
 
@@ -351,6 +351,36 @@ async def _read_trade_stream(
         )
 
 
+BINANCE_USDM_REFERENCE_CANDIDATE_CAPTURE_SECONDS = 4_200.0
+
+
+@dataclass(frozen=True, slots=True)
+class BinanceUsdMCandidateCaptureResult:
+    """Result of one official ADR-033 empirical candidate capture."""
+
+    artifact_directory: Path
+    capture_id: str
+    candidate_id: str
+    raw_record_count: int
+    depth_update_count: int
+    aggregate_trade_count: int
+    initial_snapshot_update_id: int
+    final_book_update_id: int
+    final_best_bid: str
+    final_best_ask: str
+    started_at_ns: int
+    ended_at_ns: int
+
+
+@dataclass(frozen=True, slots=True)
+class _BinanceUsdMLiveCaptureSessionResult:
+    artifact_directory: Path
+    processed: BinanceUsdMCaptureProcessorResult
+    initial_snapshot_update_id: int
+    started_at_ns: int
+    ended_at_ns: int
+
+
 def _smoke_duration(value: object) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise TypeError("duration_seconds must be a real number")
@@ -363,19 +393,15 @@ def _smoke_duration(value: object) -> float:
     return duration
 
 
-async def capture_binance_usdm_smoke(
+async def _capture_binance_usdm_session(
     directory: str | Path,
     *,
     repository_commit_sha: str,
-    capture_id: str = "smoke-btcusdt",
-    candidate_id: str = "SMOKE_ONLY",
-    duration_seconds: float = 5.0,
-    contract: BinanceUsdMEmpiricalContract | None = None,
-) -> BinanceUsdMSmokeCaptureResult:
-    """Run one bounded non-official BTCUSDT live capture."""
-
-    duration = _smoke_duration(duration_seconds)
-
+    capture_id: str,
+    candidate_id: str,
+    duration_seconds: float,
+    contract: BinanceUsdMEmpiricalContract | None,
+) -> _BinanceUsdMLiveCaptureSessionResult:
     active_contract = binance_usdm_empirical_contract() if contract is None else contract
 
     await asyncio.to_thread(
@@ -441,10 +467,11 @@ async def capture_binance_usdm_smoke(
                         received_at_ns=time.time_ns(),
                     )
 
-                    await asyncio.sleep(duration)
+                    await asyncio.sleep(duration_seconds)
 
                 finally:
                     stop.set()
+
                     await asyncio.gather(
                         depth_task,
                         trade_task,
@@ -457,6 +484,7 @@ async def capture_binance_usdm_smoke(
                 await depth_task
 
     processed = processor.finalize()
+
     ended_at_ns = time.time_ns()
 
     if ended_at_ns <= started_at_ns:
@@ -465,7 +493,7 @@ async def capture_binance_usdm_smoke(
     provenance = BinanceUsdMCaptureProvenance(
         capture_id=capture_id,
         candidate_id=candidate_id,
-        repository_commit_sha=(repository_commit_sha),
+        repository_commit_sha=repository_commit_sha,
         started_at_ns=started_at_ns,
         ended_at_ns=ended_at_ns,
     )
@@ -480,7 +508,7 @@ async def capture_binance_usdm_smoke(
     snapshot_records = tuple(
         record
         for record in processed.records
-        if (record.channel is BinanceUsdMRawChannel.DEPTH_SNAPSHOT)
+        if record.channel is BinanceUsdMRawChannel.DEPTH_SNAPSHOT
     )
 
     if len(snapshot_records) != 1:
@@ -501,19 +529,87 @@ async def capture_binance_usdm_smoke(
     ):
         raise BinanceUsdMCaptureError("captured depth snapshot has invalid lastUpdateId")
 
-    initial_snapshot_update_id = snapshot_value["lastUpdateId"]
+    return _BinanceUsdMLiveCaptureSessionResult(
+        artifact_directory=artifact_directory,
+        processed=processed,
+        initial_snapshot_update_id=(snapshot_value["lastUpdateId"]),
+        started_at_ns=started_at_ns,
+        ended_at_ns=ended_at_ns,
+    )
+
+
+async def capture_binance_usdm_smoke(
+    directory: str | Path,
+    *,
+    repository_commit_sha: str,
+    capture_id: str = "smoke-btcusdt",
+    candidate_id: str = "SMOKE_ONLY",
+    duration_seconds: float = 5.0,
+    contract: BinanceUsdMEmpiricalContract | None = None,
+) -> BinanceUsdMSmokeCaptureResult:
+    """Run one bounded non-official BTCUSDT live capture."""
+
+    duration = _smoke_duration(duration_seconds)
+
+    session = await _capture_binance_usdm_session(
+        directory,
+        repository_commit_sha=repository_commit_sha,
+        capture_id=capture_id,
+        candidate_id=candidate_id,
+        duration_seconds=duration,
+        contract=contract,
+    )
+
+    processed = session.processed
 
     return BinanceUsdMSmokeCaptureResult(
-        artifact_directory=artifact_directory,
+        artifact_directory=(session.artifact_directory),
         capture_id=capture_id,
         candidate_id=candidate_id,
         raw_record_count=len(processed.records),
         depth_update_count=(processed.depth_update_count),
         aggregate_trade_count=(processed.aggregate_trade_count),
-        initial_snapshot_update_id=(initial_snapshot_update_id),
+        initial_snapshot_update_id=(session.initial_snapshot_update_id),
         final_book_update_id=(processed.final_book_state.last_update_id),
         final_best_bid=str(processed.final_book_state.best_bid),
         final_best_ask=str(processed.final_book_state.best_ask),
-        started_at_ns=started_at_ns,
-        ended_at_ns=ended_at_ns,
+        started_at_ns=session.started_at_ns,
+        ended_at_ns=session.ended_at_ns,
+    )
+
+
+async def capture_binance_usdm_candidate(
+    directory: str | Path,
+    *,
+    repository_commit_sha: str,
+    capture_id: str,
+    candidate_id: str,
+    contract: BinanceUsdMEmpiricalContract | None = None,
+) -> BinanceUsdMCandidateCaptureResult:
+    """Capture one official ADR-033 reference-set candidate."""
+
+    session = await _capture_binance_usdm_session(
+        directory,
+        repository_commit_sha=repository_commit_sha,
+        capture_id=capture_id,
+        candidate_id=candidate_id,
+        duration_seconds=(BINANCE_USDM_REFERENCE_CANDIDATE_CAPTURE_SECONDS),
+        contract=contract,
+    )
+
+    processed = session.processed
+
+    return BinanceUsdMCandidateCaptureResult(
+        artifact_directory=(session.artifact_directory),
+        capture_id=capture_id,
+        candidate_id=candidate_id,
+        raw_record_count=len(processed.records),
+        depth_update_count=(processed.depth_update_count),
+        aggregate_trade_count=(processed.aggregate_trade_count),
+        initial_snapshot_update_id=(session.initial_snapshot_update_id),
+        final_book_update_id=(processed.final_book_state.last_update_id),
+        final_best_bid=str(processed.final_book_state.best_bid),
+        final_best_ask=str(processed.final_book_state.best_ask),
+        started_at_ns=session.started_at_ns,
+        ended_at_ns=session.ended_at_ns,
     )

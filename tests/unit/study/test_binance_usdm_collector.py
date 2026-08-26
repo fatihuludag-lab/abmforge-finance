@@ -791,3 +791,79 @@ def test_trade_reader_handles_asyncio_timeout_v5(
         )
 
     asyncio.run(scenario())
+
+
+def test_official_candidate_uses_frozen_4200_second_duration(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import asyncio
+    from decimal import Decimal
+    from types import SimpleNamespace
+    from typing import Any
+
+    import abmforge_finance.study.binance_usdm_collector as collector
+
+    observed: dict[str, object] = {}
+
+    async def fake_session(
+        directory: str | Path,
+        *,
+        repository_commit_sha: str,
+        capture_id: str,
+        candidate_id: str,
+        duration_seconds: float,
+        contract: object,
+    ) -> Any:
+        observed["directory"] = directory
+        observed["repository_commit_sha"] = repository_commit_sha
+        observed["capture_id"] = capture_id
+        observed["candidate_id"] = candidate_id
+        observed["duration_seconds"] = duration_seconds
+
+        return SimpleNamespace(
+            artifact_directory=Path(directory),
+            processed=SimpleNamespace(
+                records=(object(),),
+                depth_update_count=10,
+                aggregate_trade_count=20,
+                final_book_state=SimpleNamespace(
+                    last_update_id=30,
+                    best_bid=Decimal("100"),
+                    best_ask=Decimal("101"),
+                ),
+            ),
+            initial_snapshot_update_id=5,
+            started_at_ns=1,
+            ended_at_ns=2,
+        )
+
+    monkeypatch.setattr(
+        collector,
+        "_capture_binance_usdm_session",
+        fake_session,
+    )
+
+    target = tmp_path / "candidate"
+
+    result = asyncio.run(
+        collector.capture_binance_usdm_candidate(
+            target,
+            repository_commit_sha=("a" * 40),
+            capture_id="capture-0001",
+            candidate_id=("BTCUSDT-CANDIDATE-0001"),
+        )
+    )
+
+    assert (
+        observed["duration_seconds"]
+        == collector.BINANCE_USDM_REFERENCE_CANDIDATE_CAPTURE_SECONDS
+        == 4_200.0
+    )
+
+    assert result.candidate_id == "BTCUSDT-CANDIDATE-0001"
+
+    assert result.raw_record_count == 1
+    assert result.depth_update_count == 10
+    assert result.aggregate_trade_count == 20
+    assert result.final_book_update_id == 30

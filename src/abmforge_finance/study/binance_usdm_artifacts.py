@@ -8,11 +8,13 @@ import os
 import re
 import shutil
 import tempfile
+from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import Enum
+from heapq import merge
 from importlib.metadata import PackageNotFoundError, version
-from itertools import pairwise
 from pathlib import Path
+from typing import BinaryIO
 
 from abmforge_finance.exceptions import (
     FinanceArtifactExistsError,
@@ -310,76 +312,333 @@ def write_binance_usdm_raw_capture(
     return target
 
 
-def _verify_jsonl(
-    path: Path,
-    *,
-    expected_records: int,
-) -> tuple[tuple[int, int, str], ...]:
-    payload = path.read_bytes()
+def _digest_file(path: Path) -> str:
+    hasher = hashlib.sha256()
 
-    if b"\r\n" in payload:
-        raise FinanceArtifactVerificationError(f"{path.name} must use LF line endings")
+    with path.open("rb") as handle:
+        while True:
+            chunk = handle.read(1024 * 1024)
 
-    lines = payload.splitlines()
+            if not chunk:
+                break
 
-    if len(lines) != expected_records:
-        raise FinanceArtifactVerificationError(f"{path.name} record count mismatch")
+            hasher.update(chunk)
 
-    output: list[tuple[int, int, str]] = []
+    return hasher.hexdigest()
 
-    for line in lines:
-        try:
-            value = json.loads(line)
-        except json.JSONDecodeError as exc:
-            raise FinanceArtifactVerificationError(f"{path.name} contains invalid JSON") from exc
 
-        if not isinstance(value, dict) or tuple(value) != _JSONL_COLUMNS:
-            raise FinanceArtifactVerificationError(f"{path.name} columns are invalid")
+class BinanceUsdMRawCaptureStreamWriter:
+    """Bounded-memory canonical raw-capture writer."""
 
-        canonical = json.dumps(
-            value,
-            ensure_ascii=False,
-            allow_nan=False,
-            separators=(",", ":"),
-        ).encode("utf-8")
+    __slots__ = (
+        "_closed",
+        "_contract",
+        "_counts",
+        "_handles",
+        "_previous_received_at",
+        "_previous_sequence",
+        "_record_count",
+        "_snapshot_count",
+        "_target",
+        "_temp",
+    )
 
-        if canonical != line:
-            raise FinanceArtifactVerificationError(f"{path.name} is not canonical JSONL")
+    def __init__(
+        self,
+        directory: str | Path,
+        *,
+        contract: BinanceUsdMEmpiricalContract | None = None,
+    ) -> None:
+        active_contract = binance_usdm_empirical_contract() if contract is None else contract
 
-        sequence = value["sequence_number"]
-        received_at = value["received_at_ns"]
-        raw_json = value["raw_json"]
+        if active_contract.contract_id != BINANCE_USDM_EMPIRICAL_CONTRACT_ID:
+            raise InvalidFinanceArtifactError("unexpected empirical contract id")
 
-        if (
-            isinstance(sequence, bool)
-            or not isinstance(sequence, int)
-            or sequence < 0
-            or isinstance(received_at, bool)
-            or not isinstance(received_at, int)
-            or received_at < 0
-            or not isinstance(raw_json, str)
-        ):
-            raise FinanceArtifactVerificationError(f"{path.name} contains invalid record metadata")
+        target = Path(directory)
 
-        try:
-            raw_value = json.loads(raw_json)
-        except json.JSONDecodeError as exc:
-            raise FinanceArtifactVerificationError(
-                f"{path.name} contains invalid raw_json"
-            ) from exc
+        if target.exists():
+            raise FinanceArtifactExistsError(f"artifact directory already exists: {target}")
 
-        if not isinstance(raw_value, dict):
-            raise FinanceArtifactVerificationError(f"{path.name} raw_json must contain an object")
+        target.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
 
-        output.append(
-            (
-                sequence,
-                received_at,
-                raw_json,
+        temp = Path(
+            tempfile.mkdtemp(
+                prefix=f".{target.name}.tmp-",
+                dir=target.parent,
             )
         )
 
-    return tuple(output)
+        handles: dict[
+            BinanceUsdMRawChannel,
+            BinaryIO,
+        ] = {}
+
+        try:
+            for channel in BinanceUsdMRawChannel:
+                handles[channel] = (temp / _FILE_BY_CHANNEL[channel]).open("wb")
+
+        except Exception:
+            for handle in handles.values():
+                handle.close()
+
+            shutil.rmtree(
+                temp,
+                ignore_errors=True,
+            )
+            raise
+
+        self._target = target
+        self._temp = temp
+        self._contract = active_contract
+        self._handles = handles
+        self._counts = {channel: 0 for channel in BinanceUsdMRawChannel}
+        self._record_count = 0
+        self._snapshot_count = 0
+        self._previous_sequence = -1
+        self._previous_received_at = -1
+        self._closed = False
+
+    @property
+    def record_count(self) -> int:
+        return self._record_count
+
+    def append(
+        self,
+        record: BinanceUsdMRawRecord,
+    ) -> None:
+        if self._closed:
+            raise InvalidFinanceArtifactError("raw capture stream writer is closed")
+
+        if not isinstance(
+            record,
+            BinanceUsdMRawRecord,
+        ):
+            raise TypeError("record must be a BinanceUsdMRawRecord")
+
+        if record.sequence_number <= self._previous_sequence:
+            raise InvalidFinanceArtifactError("raw capture sequence numbers must increase strictly")
+
+        if record.received_at_ns < self._previous_received_at:
+            raise InvalidFinanceArtifactError(
+                "raw capture receipt timestamps must be non-decreasing"
+            )
+
+        value = {
+            "sequence_number": (record.sequence_number),
+            "received_at_ns": (record.received_at_ns),
+            "raw_json": record.raw_json,
+        }
+
+        payload = (
+            json.dumps(
+                value,
+                ensure_ascii=False,
+                allow_nan=False,
+                separators=(",", ":"),
+            )
+            + "\n"
+        ).encode("utf-8")
+
+        self._handles[record.channel].write(payload)
+
+        self._counts[record.channel] += 1
+
+        if record.channel is BinanceUsdMRawChannel.DEPTH_SNAPSHOT:
+            self._snapshot_count += 1
+
+        self._record_count += 1
+        self._previous_sequence = record.sequence_number
+        self._previous_received_at = record.received_at_ns
+
+    def _close_handles(self) -> None:
+        for handle in self._handles.values():
+            if not handle.closed:
+                handle.flush()
+                handle.close()
+
+    def finalize(
+        self,
+        *,
+        provenance: BinanceUsdMCaptureProvenance,
+    ) -> Path:
+        if self._closed:
+            raise InvalidFinanceArtifactError("raw capture stream writer is closed")
+
+        if not isinstance(
+            provenance,
+            BinanceUsdMCaptureProvenance,
+        ):
+            raise TypeError("provenance must be a BinanceUsdMCaptureProvenance")
+
+        if self._record_count < 1:
+            raise InvalidFinanceArtifactError("raw capture must contain at least one record")
+
+        if self._snapshot_count != 1:
+            raise InvalidFinanceArtifactError(
+                "one continuous candidate capture must contain exactly one depth snapshot"
+            )
+
+        try:
+            self._close_handles()
+
+            files: dict[str, object] = {}
+
+            for channel in BinanceUsdMRawChannel:
+                filename = _FILE_BY_CHANNEL[channel]
+
+                file_path = self._temp / filename
+
+                files[channel.value] = {
+                    "path": filename,
+                    "records": (self._counts[channel]),
+                    "sha256": (_digest_file(file_path)),
+                }
+
+            manifest: dict[str, object] = {
+                "artifact_schema_version": (BINANCE_USDM_RAW_CAPTURE_SCHEMA_VERSION),
+                "contract": (self._contract.to_mapping()),
+                "files": files,
+                "producer": {
+                    "name": "abmforge-finance",
+                    "version": _PACKAGE_VERSION,
+                },
+                "provenance": (provenance.to_mapping()),
+                "record_count": (self._record_count),
+            }
+
+            (self._temp / "manifest.json").write_bytes(_manifest_bytes(manifest))
+
+            os.replace(
+                self._temp,
+                self._target,
+            )
+
+        except Exception:
+            self._close_handles()
+
+            shutil.rmtree(
+                self._temp,
+                ignore_errors=True,
+            )
+            self._closed = True
+            raise
+
+        self._closed = True
+
+        return self._target
+
+    def abort(self) -> None:
+        if self._closed:
+            return
+
+        self._close_handles()
+
+        shutil.rmtree(
+            self._temp,
+            ignore_errors=True,
+        )
+
+        self._closed = True
+
+
+def _iter_jsonl_metadata(
+    path: Path,
+) -> Iterator[tuple[int, int]]:
+    """Yield verified sequence/receipt metadata one JSONL row at a time."""
+
+    previous_sequence = -1
+
+    with path.open("rb") as handle:
+        for raw_line in handle:
+            if b"\r\n" in raw_line:
+                raise FinanceArtifactVerificationError(f"{path.name} must use LF line endings")
+
+            line = raw_line[:-1] if raw_line.endswith(b"\n") else raw_line
+
+            try:
+                value = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise FinanceArtifactVerificationError(
+                    f"{path.name} contains invalid JSON"
+                ) from exc
+
+            if not isinstance(value, dict) or tuple(value) != _JSONL_COLUMNS:
+                raise FinanceArtifactVerificationError(f"{path.name} columns are invalid")
+
+            canonical = json.dumps(
+                value,
+                ensure_ascii=False,
+                allow_nan=False,
+                separators=(",", ":"),
+            ).encode("utf-8")
+
+            if canonical != line:
+                raise FinanceArtifactVerificationError(f"{path.name} is not canonical JSONL")
+
+            sequence = value["sequence_number"]
+            received_at = value["received_at_ns"]
+            raw_json = value["raw_json"]
+
+            if (
+                isinstance(sequence, bool)
+                or not isinstance(sequence, int)
+                or sequence < 0
+                or isinstance(received_at, bool)
+                or not isinstance(received_at, int)
+                or received_at < 0
+                or not isinstance(raw_json, str)
+            ):
+                raise FinanceArtifactVerificationError(
+                    f"{path.name} contains invalid record metadata"
+                )
+
+            try:
+                raw_value = json.loads(raw_json)
+            except json.JSONDecodeError as exc:
+                raise FinanceArtifactVerificationError(
+                    f"{path.name} contains invalid raw_json"
+                ) from exc
+
+            if not isinstance(raw_value, dict):
+                raise FinanceArtifactVerificationError(
+                    f"{path.name} raw_json must contain an object"
+                )
+
+            if sequence == previous_sequence:
+                raise FinanceArtifactVerificationError(
+                    "raw capture sequence numbers are not unique"
+                )
+
+            if sequence < previous_sequence:
+                raise FinanceArtifactVerificationError(
+                    "raw capture sequence numbers do not increase strictly"
+                )
+
+            previous_sequence = sequence
+
+            yield (
+                sequence,
+                received_at,
+            )
+
+
+def _verify_jsonl_stream(
+    path: Path,
+    *,
+    expected_records: int,
+) -> None:
+    """Verify one canonical JSONL channel with bounded memory."""
+
+    observed_records = 0
+
+    for _ in _iter_jsonl_metadata(path):
+        observed_records += 1
+
+    if observed_records != expected_records:
+        raise FinanceArtifactVerificationError(f"{path.name} record count mismatch")
 
 
 def verify_binance_usdm_raw_capture(
@@ -393,6 +652,7 @@ def verify_binance_usdm_raw_capture(
     if not root.is_dir() or not manifest_path.is_file():
         raise FinanceArtifactVerificationError("raw capture artifact is missing manifest.json")
 
+    # manifest.json is intentionally tiny and may be loaded atomically.
     manifest_payload = manifest_path.read_bytes()
 
     try:
@@ -408,7 +668,7 @@ def verify_binance_usdm_raw_capture(
     if _manifest_bytes(manifest) != manifest_payload:
         raise FinanceArtifactVerificationError("manifest.json is not canonical")
 
-    if manifest.get("artifact_schema_version") != (BINANCE_USDM_RAW_CAPTURE_SCHEMA_VERSION):
+    if manifest.get("artifact_schema_version") != BINANCE_USDM_RAW_CAPTURE_SCHEMA_VERSION:
         raise FinanceArtifactVerificationError("unsupported raw capture artifact schema")
 
     contract = manifest.get("contract")
@@ -427,7 +687,10 @@ def verify_binance_usdm_raw_capture(
     if (
         not isinstance(producer, dict)
         or producer.get("name") != "abmforge-finance"
-        or not isinstance(producer.get("version"), str)
+        or not isinstance(
+            producer.get("version"),
+            str,
+        )
     ):
         raise FinanceArtifactVerificationError("invalid raw capture producer metadata")
 
@@ -438,10 +701,11 @@ def verify_binance_usdm_raw_capture(
         BinanceUsdMCaptureProvenance(
             capture_id=provenance["capture_id"],
             candidate_id=provenance["candidate_id"],
-            repository_commit_sha=(provenance["repository_commit_sha"]),
+            repository_commit_sha=provenance["repository_commit_sha"],
             started_at_ns=provenance["started_at_ns"],
             ended_at_ns=provenance["ended_at_ns"],
         )
+
     except (
         KeyError,
         TypeError,
@@ -462,12 +726,13 @@ def verify_binance_usdm_raw_capture(
         *_FILE_BY_CHANNEL.values(),
     }
 
-    actual_names = {path.name for path in root.iterdir()}
+    actual_names = {item.name for item in root.iterdir()}
 
-    if actual_names != expected_names or any(path.is_dir() for path in root.iterdir()):
+    if actual_names != expected_names or any(item.is_dir() for item in root.iterdir()):
         raise FinanceArtifactVerificationError("raw capture directory membership is invalid")
 
-    observed: list[tuple[int, int, str]] = []
+    channel_paths: list[Path] = []
+    total_records = 0
     snapshot_records = 0
 
     for channel in BinanceUsdMRawChannel:
@@ -491,22 +756,25 @@ def verify_binance_usdm_raw_capture(
         ):
             raise FinanceArtifactVerificationError(f"invalid file metadata for {channel.value}")
 
-        path = root / expected_name
+        raw_path = root / expected_name
 
-        if not path.is_file() or _digest(path.read_bytes()) != digest:
+        # Critical change: hash in chunks; never read the whole
+        # raw channel into one bytes object.
+        if not raw_path.is_file() or _digest_file(raw_path) != digest:
             raise FinanceArtifactVerificationError(f"integrity failure for {expected_name}")
 
-        rows = _verify_jsonl(
-            path,
+        _verify_jsonl_stream(
+            raw_path,
             expected_records=count,
         )
 
-        observed.extend(rows)
+        channel_paths.append(raw_path)
+        total_records += count
 
         if channel is BinanceUsdMRawChannel.DEPTH_SNAPSHOT:
             snapshot_records = count
 
-    if len(observed) != record_count:
+    if total_records != record_count:
         raise FinanceArtifactVerificationError("manifest total record count mismatch")
 
     if snapshot_records != 1:
@@ -514,19 +782,32 @@ def verify_binance_usdm_raw_capture(
             "raw capture must contain exactly one depth snapshot"
         )
 
-    observed.sort(key=lambda row: row[0])
+    # Three already-validated channel subsequences are merged lazily.
+    # Memory use remains O(number of channels), not O(number of records).
+    merged_rows = merge(
+        *(_iter_jsonl_metadata(raw_path) for raw_path in channel_paths),
+        key=lambda row: row[0],
+    )
 
-    sequences = tuple(row[0] for row in observed)
+    previous_sequence = -1
+    previous_received_at = -1
+    merged_count = 0
 
-    if len(set(sequences)) != len(sequences):
-        raise FinanceArtifactVerificationError("raw capture sequence numbers are not unique")
+    for sequence, received_at in merged_rows:
+        if sequence == previous_sequence:
+            raise FinanceArtifactVerificationError("raw capture sequence numbers are not unique")
 
-    if any(right <= left for left, right in pairwise(sequences)):
-        raise FinanceArtifactVerificationError(
-            "raw capture sequence numbers do not increase strictly"
-        )
+        if sequence < previous_sequence:
+            raise FinanceArtifactVerificationError(
+                "raw capture sequence numbers do not increase strictly"
+            )
 
-    receipt_times = tuple(row[1] for row in observed)
+        if received_at < previous_received_at:
+            raise FinanceArtifactVerificationError("raw capture receipt timestamps decrease")
 
-    if any(right < left for left, right in pairwise(receipt_times)):
-        raise FinanceArtifactVerificationError("raw capture receipt timestamps decrease")
+        previous_sequence = sequence
+        previous_received_at = received_at
+        merged_count += 1
+
+    if merged_count != record_count:
+        raise FinanceArtifactVerificationError("manifest total record count mismatch")

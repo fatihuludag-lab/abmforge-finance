@@ -33,7 +33,7 @@ from abmforge_finance.study.binance_usdm_contract import (
     binance_usdm_empirical_contract,
 )
 from abmforge_finance.study.binance_usdm_replay import (
-    reconstruct_binance_usdm_empirical_intervals,
+    reconstruct_binance_usdm_empirical_intervals_streaming,
 )
 
 BINANCE_USDM_REFERENCE_CANDIDATE_SCHEMA_VERSION = "binance-usdm-reference-candidate-v1"
@@ -185,7 +185,7 @@ def evaluate_binance_usdm_reference_artifact(
     try:
         verify_binance_usdm_raw_capture(root)
 
-        reconstructed = reconstruct_binance_usdm_empirical_intervals(root)
+        reconstructed = reconstruct_binance_usdm_empirical_intervals_streaming(root)
 
     except (
         FinanceArtifactVerificationError,

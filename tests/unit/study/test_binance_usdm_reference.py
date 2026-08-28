@@ -72,7 +72,7 @@ def test_reference_evaluator_selects_first_4097_only(
 
     monkeypatch.setattr(
         reference,
-        "reconstruct_binance_usdm_empirical_intervals",
+        "reconstruct_binance_usdm_empirical_intervals_streaming",
         lambda directory: fake_intervals,
     )
 

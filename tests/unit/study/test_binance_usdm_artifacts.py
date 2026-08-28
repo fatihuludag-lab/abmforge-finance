@@ -1179,3 +1179,61 @@ def test_artifact_remaining_integrity_edges_v4(
         match="receipt timestamps decrease",
     ):
         verify_binance_usdm_raw_capture(target)
+
+
+def test_stream_writer_matches_legacy_writer_bytes_v5(
+    tmp_path: Path,
+) -> None:
+    from abmforge_finance.study.binance_usdm_artifacts import (
+        BinanceUsdMRawCaptureStreamWriter,
+    )
+
+    legacy = write_binance_usdm_raw_capture(
+        _records(),
+        tmp_path / "legacy",
+        provenance=_provenance(),
+    )
+
+    writer = BinanceUsdMRawCaptureStreamWriter(tmp_path / "streaming")
+
+    for record in _records():
+        writer.append(record)
+
+    streaming = writer.finalize(provenance=_provenance())
+
+    for name in (
+        "manifest.json",
+        "depth_snapshot.jsonl",
+        "depth_updates.jsonl",
+        "aggregate_trades.jsonl",
+    ):
+        assert (legacy / name).read_bytes() == (streaming / name).read_bytes()
+
+
+def test_verifier_never_reads_raw_channel_whole_v5(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = write_binance_usdm_raw_capture(
+        _records(),
+        tmp_path / "capture",
+        provenance=_provenance(),
+    )
+
+    original_read_bytes = Path.read_bytes
+
+    def guarded_read_bytes(
+        self: Path,
+    ) -> bytes:
+        if self.name != "manifest.json":
+            raise AssertionError("raw channel was read atomically")
+
+        return original_read_bytes(self)
+
+    monkeypatch.setattr(
+        Path,
+        "read_bytes",
+        guarded_read_bytes,
+    )
+
+    verify_binance_usdm_raw_capture(target)

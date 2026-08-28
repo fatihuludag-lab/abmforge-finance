@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,7 @@ from typing import Any
 from abmforge_finance.exceptions import InvalidMetricInputError
 from abmforge_finance.study.binance_usdm_artifacts import (
     BinanceUsdMCaptureProvenance,
+    BinanceUsdMRawCaptureStreamWriter,
     BinanceUsdMRawChannel,
     BinanceUsdMRawRecord,
     write_binance_usdm_raw_capture,
@@ -55,6 +57,17 @@ class BinanceUsdMCaptureProcessorResult:
 
 
 @dataclass(frozen=True, slots=True)
+class BinanceUsdMCaptureProcessorSummary:
+    """Bounded-memory final capture state."""
+
+    raw_record_count: int
+    final_book_state: BinanceUsdMLocalBookState
+    initial_snapshot_update_id: int
+    depth_update_count: int
+    aggregate_trade_count: int
+
+
+@dataclass(frozen=True, slots=True)
 class BinanceUsdMSmokeCaptureResult:
     """Result of one bounded non-official live smoke capture."""
 
@@ -77,14 +90,21 @@ class BinanceUsdMCaptureProcessor:
 
     __slots__ = (
         "_aggregate_trade_count",
+        "_aggregate_trade_sink",
         "_aggregate_trades",
         "_book",
+        "_book_state_sink",
         "_book_states",
         "_contract",
         "_depth_buffer",
         "_depth_update_count",
         "_last_received_at_ns",
+        "_record_count",
+        "_record_sink",
         "_records",
+        "_retain_aggregate_trades",
+        "_retain_book_states",
+        "_retain_records",
         "_snapshot",
     )
 
@@ -92,6 +112,12 @@ class BinanceUsdMCaptureProcessor:
         self,
         *,
         contract: BinanceUsdMEmpiricalContract | None = None,
+        record_sink: (Callable[[BinanceUsdMRawRecord], None] | None) = None,
+        book_state_sink: (Callable[[BinanceUsdMLocalBookState], None] | None) = None,
+        aggregate_trade_sink: (Callable[[BinanceUsdMAggTradeEvent], None] | None) = None,
+        retain_records: bool = True,
+        retain_book_states: bool = True,
+        retain_aggregate_trades: bool = True,
     ) -> None:
         self._contract = binance_usdm_empirical_contract() if contract is None else contract
         self._records: list[BinanceUsdMRawRecord] = []
@@ -102,7 +128,14 @@ class BinanceUsdMCaptureProcessor:
         self._aggregate_trades: list[BinanceUsdMAggTradeEvent] = []
         self._depth_update_count = 0
         self._aggregate_trade_count = 0
+        self._record_count = 0
         self._last_received_at_ns = -1
+        self._record_sink = record_sink
+        self._book_state_sink = book_state_sink
+        self._aggregate_trade_sink = aggregate_trade_sink
+        self._retain_records = retain_records
+        self._retain_book_states = retain_book_states
+        self._retain_aggregate_trades = retain_aggregate_trades
 
     @property
     def is_synchronized(self) -> bool:
@@ -127,15 +160,36 @@ class BinanceUsdMCaptureProcessor:
         if received_at_ns < self._last_received_at_ns:
             raise BinanceUsdMCaptureError("raw receipt timestamps must be non-decreasing")
 
-        self._records.append(
-            BinanceUsdMRawRecord(
-                sequence_number=len(self._records),
-                channel=channel,
-                received_at_ns=received_at_ns,
-                raw_json=raw_json,
-            )
+        record = BinanceUsdMRawRecord(
+            sequence_number=self._record_count,
+            channel=channel,
+            received_at_ns=received_at_ns,
+            raw_json=raw_json,
         )
+
+        if self._record_sink is not None:
+            self._record_sink(record)
+
+        if self._retain_records:
+            self._records.append(record)
+
+        self._record_count += 1
         self._last_received_at_ns = received_at_ns
+
+    def _emit_book_state(self) -> None:
+        if self._book is None:
+            return
+
+        if self._book_state_sink is None and not self._retain_book_states:
+            return
+
+        state = self._book.state()
+
+        if self._book_state_sink is not None:
+            self._book_state_sink(state)
+
+        if self._retain_book_states:
+            self._book_states.append(state)
 
     def accept_depth_update(
         self,
@@ -172,7 +226,7 @@ class BinanceUsdMCaptureProcessor:
             except BinanceUsdMBookSynchronizationError as exc:
                 raise BinanceUsdMCaptureError("depth update continuity failure") from exc
 
-            self._book_states.append(self._book.state())
+            self._emit_book_state()
             return
 
         self._depth_buffer.append(event)
@@ -205,7 +259,12 @@ class BinanceUsdMCaptureProcessor:
             contract=self._contract,
         )
 
-        self._aggregate_trades.append(event)
+        if self._aggregate_trade_sink is not None:
+            self._aggregate_trade_sink(event)
+
+        if self._retain_aggregate_trades:
+            self._aggregate_trades.append(event)
+
         self._aggregate_trade_count += 1
 
     def accept_depth_snapshot(
@@ -267,11 +326,11 @@ class BinanceUsdMCaptureProcessor:
                 contract=self._contract,
             )
 
-            self._book_states.append(self._book.state())
+            self._emit_book_state()
 
             for event in retained[1:]:
                 self._book.apply(event)
-                self._book_states.append(self._book.state())
+                self._emit_book_state()
 
         except BinanceUsdMBookSynchronizationError as exc:
             raise BinanceUsdMCaptureError("depth snapshot synchronization failed") from exc
@@ -299,6 +358,28 @@ class BinanceUsdMCaptureProcessor:
             book_states=tuple(self._book_states),
             aggregate_trades=tuple(self._aggregate_trades),
             depth_update_count=self._depth_update_count,
+            aggregate_trade_count=(self._aggregate_trade_count),
+        )
+
+    def finalize_summary(
+        self,
+    ) -> BinanceUsdMCaptureProcessorSummary:
+        """Finalize without materializing retained timelines."""
+
+        if self._snapshot is None:
+            raise BinanceUsdMCaptureError("capture did not obtain a depth snapshot")
+
+        if self._book is None:
+            raise BinanceUsdMCaptureError("capture never synchronized the local depth book")
+
+        if self._record_count < 1:
+            raise BinanceUsdMCaptureError("capture contains no raw records")
+
+        return BinanceUsdMCaptureProcessorSummary(
+            raw_record_count=(self._record_count),
+            final_book_state=(self._book.state()),
+            initial_snapshot_update_id=(self._snapshot.last_update_id),
+            depth_update_count=(self._depth_update_count),
             aggregate_trade_count=(self._aggregate_trade_count),
         )
 
@@ -578,6 +659,147 @@ async def capture_binance_usdm_smoke(
     )
 
 
+async def _capture_binance_usdm_candidate_streaming(
+    directory: str | Path,
+    *,
+    repository_commit_sha: str,
+    capture_id: str,
+    candidate_id: str,
+    duration_seconds: float,
+    contract: BinanceUsdMEmpiricalContract | None = None,
+) -> BinanceUsdMCandidateCaptureResult:
+    """Capture one official ADR-033 reference-set candidate."""
+
+    active_contract = binance_usdm_empirical_contract() if contract is None else contract
+
+    await asyncio.to_thread(
+        fetch_binance_usdm_exchange_info,
+        contract=active_contract,
+    )
+
+    connect = load_websocket_connect()
+
+    writer = BinanceUsdMRawCaptureStreamWriter(
+        directory,
+        contract=active_contract,
+    )
+
+    processor = BinanceUsdMCaptureProcessor(
+        contract=active_contract,
+        record_sink=writer.append,
+        retain_records=False,
+        retain_book_states=False,
+        retain_aggregate_trades=False,
+    )
+
+    stop = asyncio.Event()
+    started_at_ns = time.time_ns()
+
+    connection_options = {
+        "open_timeout": 10.0,
+        "ping_interval": None,
+        "ping_timeout": None,
+        "close_timeout": 5.0,
+        "max_size": 8 * 1024 * 1024,
+        "max_queue": 256,
+    }
+
+    try:
+        async with connect(
+            active_contract.depth_websocket_url,
+            **connection_options,
+        ) as depth_websocket:
+            depth_task = asyncio.create_task(
+                _read_depth_stream(
+                    depth_websocket,
+                    processor,
+                    stop,
+                )
+            )
+
+            try:
+                async with connect(
+                    active_contract.aggregate_trade_websocket_url,
+                    **connection_options,
+                ) as trade_websocket:
+                    trade_task = asyncio.create_task(
+                        _read_trade_stream(
+                            trade_websocket,
+                            processor,
+                            stop,
+                        )
+                    )
+
+                    try:
+                        (
+                            snapshot_raw,
+                            snapshot,
+                        ) = await asyncio.to_thread(
+                            fetch_binance_usdm_depth_snapshot,
+                            contract=active_contract,
+                        )
+
+                        processor.accept_depth_snapshot(
+                            snapshot_raw,
+                            snapshot,
+                            received_at_ns=time.time_ns(),
+                        )
+
+                        await asyncio.sleep(duration_seconds)
+
+                    finally:
+                        stop.set()
+
+                        await asyncio.gather(
+                            depth_task,
+                            trade_task,
+                        )
+
+            finally:
+                stop.set()
+
+                if not depth_task.done():
+                    await depth_task
+
+        summary = processor.finalize_summary()
+
+        ended_at_ns = time.time_ns()
+
+        if ended_at_ns <= started_at_ns:
+            ended_at_ns = started_at_ns + 1
+
+        provenance = BinanceUsdMCaptureProvenance(
+            capture_id=capture_id,
+            candidate_id=candidate_id,
+            repository_commit_sha=(repository_commit_sha),
+            started_at_ns=(started_at_ns),
+            ended_at_ns=ended_at_ns,
+        )
+
+        artifact_directory = writer.finalize(provenance=provenance)
+
+    except BaseException:
+        writer.abort()
+        raise
+
+    final_state = summary.final_book_state
+
+    return BinanceUsdMCandidateCaptureResult(
+        artifact_directory=(artifact_directory),
+        capture_id=capture_id,
+        candidate_id=candidate_id,
+        raw_record_count=(summary.raw_record_count),
+        depth_update_count=(summary.depth_update_count),
+        aggregate_trade_count=(summary.aggregate_trade_count),
+        initial_snapshot_update_id=(summary.initial_snapshot_update_id),
+        final_book_update_id=(final_state.last_update_id),
+        final_best_bid=str(final_state.best_bid),
+        final_best_ask=str(final_state.best_ask),
+        started_at_ns=started_at_ns,
+        ended_at_ns=ended_at_ns,
+    )
+
+
 async def capture_binance_usdm_candidate(
     directory: str | Path,
     *,
@@ -588,28 +810,11 @@ async def capture_binance_usdm_candidate(
 ) -> BinanceUsdMCandidateCaptureResult:
     """Capture one official ADR-033 reference-set candidate."""
 
-    session = await _capture_binance_usdm_session(
+    return await _capture_binance_usdm_candidate_streaming(
         directory,
         repository_commit_sha=repository_commit_sha,
         capture_id=capture_id,
         candidate_id=candidate_id,
         duration_seconds=(BINANCE_USDM_REFERENCE_CANDIDATE_CAPTURE_SECONDS),
         contract=contract,
-    )
-
-    processed = session.processed
-
-    return BinanceUsdMCandidateCaptureResult(
-        artifact_directory=(session.artifact_directory),
-        capture_id=capture_id,
-        candidate_id=candidate_id,
-        raw_record_count=len(processed.records),
-        depth_update_count=(processed.depth_update_count),
-        aggregate_trade_count=(processed.aggregate_trade_count),
-        initial_snapshot_update_id=(session.initial_snapshot_update_id),
-        final_book_update_id=(processed.final_book_state.last_update_id),
-        final_best_bid=str(processed.final_book_state.best_bid),
-        final_best_ask=str(processed.final_book_state.best_ask),
-        started_at_ns=session.started_at_ns,
-        ended_at_ns=session.ended_at_ns,
     )

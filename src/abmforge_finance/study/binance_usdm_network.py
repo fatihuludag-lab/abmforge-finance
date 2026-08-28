@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from http.client import IncompleteRead, RemoteDisconnected
 from importlib import import_module
 from typing import Any, cast
 from urllib.error import HTTPError, URLError
@@ -163,6 +165,8 @@ def _http_get_text(
     *,
     timeout_seconds: float,
 ) -> str:
+    """Fetch UTF-8 text with bounded retries for transport truncation."""
+
     request = Request(
         url,
         headers={
@@ -172,17 +176,50 @@ def _http_get_text(
         method="GET",
     )
 
-    try:
-        with urlopen(
-            request,
-            timeout=timeout_seconds,
-        ) as response:
-            payload = cast(bytes, response.read())
-    except (HTTPError, URLError, TimeoutError) as exc:
-        raise BinanceUsdMNetworkError(f"Binance HTTP request failed: {url}") from exc
+    max_attempts = 3
+    payload: bytes | None = None
+
+    for attempt in range(
+        1,
+        max_attempts + 1,
+    ):
+        try:
+            with urlopen(
+                request,
+                timeout=timeout_seconds,
+            ) as response:
+                payload = cast(
+                    bytes,
+                    response.read(),
+                )
+
+            break
+
+        except HTTPError as exc:
+            # HTTP protocol/status failures are not silently
+            # converted into transport retries.
+            raise BinanceUsdMNetworkError(f"Binance HTTP request failed: {url}") from exc
+
+        except (
+            IncompleteRead,
+            RemoteDisconnected,
+            URLError,
+            TimeoutError,
+            ConnectionError,
+        ) as exc:
+            if attempt >= max_attempts:
+                raise BinanceUsdMNetworkError(
+                    f"Binance HTTP request failed after {max_attempts} attempts: {url}"
+                ) from exc
+
+            time.sleep(0.25 * attempt)
+
+    if payload is None:
+        raise BinanceUsdMNetworkError(f"Binance HTTP request produced no payload: {url}")
 
     try:
         return payload.decode("utf-8")
+
     except UnicodeDecodeError as exc:
         raise BinanceUsdMNetworkError("Binance HTTP response is not UTF-8") from exc
 

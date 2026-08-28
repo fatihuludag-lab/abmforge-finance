@@ -479,3 +479,138 @@ def test_network_remaining_validation_edges_v4(
         match="symbol does not match",
     ):
         network.parse_binance_usdm_exchange_info(_exchange_info())
+
+
+def test_network_retries_incomplete_read_v5(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from http.client import IncompleteRead
+
+    import abmforge_finance.study.binance_usdm_network as network
+
+    calls = 0
+
+    class BrokenResponse:
+        def __enter__(self) -> BrokenResponse:
+            return self
+
+        def __exit__(
+            self,
+            exc_type: object,
+            exc: object,
+            traceback: object,
+        ) -> None:
+            return None
+
+        def read(self) -> bytes:
+            raise IncompleteRead(
+                b'{"partial":',
+                100,
+            )
+
+    class GoodResponse:
+        def __enter__(self) -> GoodResponse:
+            return self
+
+        def __exit__(
+            self,
+            exc_type: object,
+            exc: object,
+            traceback: object,
+        ) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"ok":true}'
+
+    def fake_urlopen(
+        request: object,
+        *,
+        timeout: float,
+    ) -> object:
+        nonlocal calls
+
+        calls += 1
+
+        if calls == 1:
+            return BrokenResponse()
+
+        return GoodResponse()
+
+    monkeypatch.setattr(
+        network,
+        "urlopen",
+        fake_urlopen,
+    )
+
+    monkeypatch.setattr(
+        "abmforge_finance.study.binance_usdm_network.time.sleep",
+        lambda seconds: None,
+    )
+
+    result = network._http_get_text(
+        "https://example.invalid/test",
+        timeout_seconds=3.0,
+    )
+
+    assert result == '{"ok":true}'
+    assert calls == 2
+
+
+def test_network_exhausts_incomplete_read_retries_v5(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from http.client import IncompleteRead
+
+    import abmforge_finance.study.binance_usdm_network as network
+
+    calls = 0
+
+    class BrokenResponse:
+        def __enter__(self) -> BrokenResponse:
+            return self
+
+        def __exit__(
+            self,
+            exc_type: object,
+            exc: object,
+            traceback: object,
+        ) -> None:
+            return None
+
+        def read(self) -> bytes:
+            raise IncompleteRead(
+                b'{"partial":',
+                100,
+            )
+
+    def fake_urlopen(
+        request: object,
+        *,
+        timeout: float,
+    ) -> BrokenResponse:
+        nonlocal calls
+        calls += 1
+        return BrokenResponse()
+
+    monkeypatch.setattr(
+        network,
+        "urlopen",
+        fake_urlopen,
+    )
+
+    monkeypatch.setattr(
+        "abmforge_finance.study.binance_usdm_network.time.sleep",
+        lambda seconds: None,
+    )
+
+    with pytest.raises(
+        network.BinanceUsdMNetworkError,
+        match="after 3 attempts",
+    ):
+        network._http_get_text(
+            "https://example.invalid/test",
+            timeout_seconds=3.0,
+        )
+
+    assert calls == 3

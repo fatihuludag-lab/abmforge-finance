@@ -192,6 +192,7 @@ def test_reconstruction_success_path_v2(
 ) -> None:
     from abmforge_finance.study.binance_usdm_replay import (
         reconstruct_binance_usdm_empirical_intervals,
+        reconstruct_binance_usdm_empirical_intervals_streaming,
     )
 
     def depth(
@@ -360,7 +361,11 @@ def test_reconstruction_success_path_v2(
         ),
     )
 
-    intervals = reconstruct_binance_usdm_empirical_intervals(target)
+    legacy_intervals = reconstruct_binance_usdm_empirical_intervals(target)
+
+    intervals = reconstruct_binance_usdm_empirical_intervals_streaming(target)
+
+    assert intervals == legacy_intervals
 
     assert len(intervals) == 2
 
